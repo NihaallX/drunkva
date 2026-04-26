@@ -84,64 +84,6 @@ Drunkva is a mobile-first, social session tracker for your nights out. You log d
 | **Notifications** | web-push | VAPID-based push notifications for PWA |
 | **Export** | `html2canvas` | Client-side rendering of DOM nodes to PNG blobs |
 
-## Getting Started
-
-### Prerequisites
-* **Node.js**: v22+
-* **Package Manager**: `pnpm`
-
-### Clone and Install
-```bash
-git clone https://github.com/NihaallX/drunkva.git
-cd drunkva
-pnpm install
-```
-
-### Environment Variables
-Create a `.env.local` file. Copy these exact keys:
-
-```env
-NEXT_PUBLIC_CLERK_ENABLED=false # Set to true to require Clerk auth, false for local mock
-DATABASE_URL="postgresql://neondb_owner:..." # Your Neon Postgres connection string
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_... # Clerk public key
-CLERK_SECRET_KEY=sk_test_... # Clerk secret key
-CLERK_WEBHOOK_SECRET=whsec_... # Clerk webhook secret for user sync
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in # Default path
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up # Default path
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/session # Default path
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding # Default path
-GROQ_API_KEY=gsk_... # Groq API key for LLM title generation
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=... # Web Push public key (from npx web-push)
-VAPID_PRIVATE_KEY=... # Web Push private key
-VAPID_SUBJECT=mailto:hello@drunkva.app # Contact email for VAPID
-NEXT_PUBLIC_APP_URL=http://localhost:3000 # App base URL for notification links
-CRON_SECRET=REPLACE_WITH_RANDOM_SECRET # Vercel cron secret key
-```
-
-### Database Setup
-```bash
-# Run the migration script against your Neon database
-node scripts/migrate.mjs
-```
-
-### Generate VAPID Keys
-```bash
-npx web-push generate-vapid-keys
-# Paste output into .env.local
-```
-
-### Run Dev Server
-```bash
-pnpm dev
-```
-*Note: Keeping `NEXT_PUBLIC_CLERK_ENABLED=false` in `.env.local` allows you to test the app locally using a Mock User without needing active Clerk credentials.*
-
-### Production Build
-```bash
-pnpm build
-pnpm start
-```
-
 ## Confidence Curve
 
 Drunkva tracks your night using a proprietary confidence curve algorithm that weights different types of alcohol against time.
@@ -191,22 +133,6 @@ drunkva/
 ├── public/               # Static assets, SW, manifest
 └── docs/                 # Screenshots and documentation
 ```
-
-## Environment Variables Reference
-
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_CLERK_ENABLED` | Yes | Toggles Clerk authentication (true/false) |
-| `DATABASE_URL` | Yes | Neon Postgres connection string |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`| Yes (if enabled) | Clerk public key for client-side auth |
-| `CLERK_SECRET_KEY` | Yes (if enabled) | Clerk secret key for server-side validation |
-| `CLERK_WEBHOOK_SECRET` | Yes (if enabled) | Verifies user sync webhooks from Clerk |
-| `GROQ_API_KEY` | Yes | Used to generate dynamic session titles |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Yes | Public key for PWA push subscriptions |
-| `VAPID_PRIVATE_KEY` | Yes | Private key to sign Web Push payloads |
-| `VAPID_SUBJECT` | Yes | Contact URI (mailto:) for push service |
-| `NEXT_PUBLIC_APP_URL` | Yes | Base URL used to construct push notification links |
-| `CRON_SECRET` | Yes | Validates requests coming from Vercel Cron |
 
 ## Roadmap
 
