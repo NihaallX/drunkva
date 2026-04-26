@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallPrompt } from "@/components/drunkva/InstallPrompt";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // Body font
@@ -87,6 +88,7 @@ export default function RootLayout({
             __html: `if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }`,
           }}
         />
+        <Analytics />
       </body>
     </html>
   );
