@@ -1,0 +1,159 @@
+"use client";
+
+import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
+import { ConfidenceBlock } from "@/components/drunkva/ConfidenceBlock";
+import { StatGrid } from "@/components/drunkva/StatGrid";
+import { QuickLogBar } from "@/components/drunkva/QuickLogBar";
+import { BottomNav } from "@/components/drunkva/BottomNav";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { calculateConfidence, getStageProgress } from "@/lib/confidence";
+
+function getInitials(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+interface DrinkLog {
+  type: string;
+  logged_at: string;
+}
+
+interface SessionState {
+  id: string | null;
+  venueName: string;
+  startTime: string | null;
+  drinks: DrinkLog[];
+  washroomCount: number;
+  burpCount: number;
+  chaknaLevel: "none" | "light" | "heavy";
+  fastestBeerSeconds: number | null;
+  fastestBeerIsPR: boolean;
+}
+
+interface LiveSessionScreenProps {
+  session: SessionState;
+  onEnd: () => void;
+  onLogDrink: (type: string) => void;
+  onOpenExtras: () => void;
+  logging: boolean;
+  userName: string;
+  userImageUrl: string | null;
+  queueCount: number;
+  justSynced: boolean;
+}
+
+export function LiveSessionScreen({
+  session,
+  onEnd,
+  onLogDrink,
+  onOpenExtras,
+  logging,
+  userName,
+  userImageUrl,
+  queueCount,
+  justSynced,
+}: LiveSessionScreenProps) {
+  const conf = calculateConfidence(session.drinks);
+  const progressPct = Math.round(getStageProgress(conf.current) * 100);
+
+  const drinkCounts: Record<string, number> = {};
+  session.drinks.forEach((d) => {
+    drinkCounts[d.type] = (drinkCounts[d.type] ?? 0) + 1;
+  });
+  const dominantDrink =
+    Object.entries(drinkCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "beer";
+
+  return (
+    <div className="dv-page bg-background">
+      {/* Nav */}
+      <div className="dv-nav flex items-center justify-between px-4 py-3">
+        <DrunkvaLogo />
+        <div className="flex items-center gap-2">
+          <Badge className="dv-live-badge">LIVE</Badge>
+          <Avatar className="size-7">
+            {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
+            <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
+              {getInitials(userName)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-col gap-3.5 p-4">
+        {/* Session header */}
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="text-[15px] font-medium text-foreground">
+              {session.venueName || "Your session"}
+            </div>
+            <div className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+              {session.drinks.length} drinks logged
+              {/* Offline sync indicator */}
+              {queueCount > 0 && (
+                <span className="flex items-center gap-1 text-amber-400">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                    <path d="M5 1a4 4 0 100 8A4 4 0 005 1zm0 1.5a.5.5 0 01.5.5v2a.5.5 0 01-.5.5.5.5 0 01-.5-.5V3a.5.5 0 01.5-.5zm0 4.75a.625.625 0 110-1.25.625.625 0 010 1.25z"/>
+                  </svg>
+                  · Syncing {queueCount} drink{queueCount !== 1 ? "s" : ""}…
+                </span>
+              )}
+              {justSynced && queueCount === 0 && (
+                <span className="flex items-center gap-1 text-green-400">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M2 5l2.5 2.5L8 3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  · Synced
+                </span>
+              )}
+              {typeof navigator !== "undefined" && !navigator.onLine && queueCount === 0 && (
+                <span className="text-primary ml-0">· Offline</span>
+              )}
+            </div>
+          </div>
+          <Button
+            id="end-session-btn"
+            variant="outline"
+            size="sm"
+            onClick={onEnd}
+            className="rounded-full border-border text-muted-foreground h-7 px-3 text-xs"
+          >
+            End
+          </Button>
+        </div>
+
+        {/* Confidence block */}
+        <ConfidenceBlock
+          stage={conf.stage}
+          confidence={conf.current}
+          progressPct={progressPct}
+        />
+
+        {/* Stats */}
+        <StatGrid
+          drinkCount={session.drinks.length}
+          dominantDrink={dominantDrink}
+          fastestBeerSeconds={session.fastestBeerSeconds}
+          fastestBeerIsPR={session.fastestBeerIsPR}
+          sessionStartMs={
+            session.startTime ? new Date(session.startTime).getTime() : Date.now()
+          }
+          washroomCount={session.washroomCount}
+        />
+
+        <Separator className="bg-border" />
+
+        {/* Quick log */}
+        <QuickLogBar
+          onLog={onLogDrink}
+          onOpenExtras={onOpenExtras}
+          disabled={logging}
+        />
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}

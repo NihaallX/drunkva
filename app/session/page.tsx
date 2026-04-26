@@ -1,0 +1,126 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { SessionStartScreen } from "@/components/drunkva/SessionStartScreen";
+import { LiveSessionScreen } from "@/components/drunkva/LiveSessionScreen";
+import { ExtrasSheet } from "@/components/drunkva/ExtrasSheet";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
+
+let useUser: () => { user: typeof MOCK_USER | null };
+if (clerkEnabled) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  useUser = require("@clerk/nextjs").useUser;
+} else {
+  useUser = () => ({ user: MOCK_USER });
+}
+
+interface DrinkLog { type: string; logged_at: string; }
+interface SessionState {
+  id: string | null; venueName: string; startTime: string | null;
+  drinks: DrinkLog[]; washroomCount: number; burpCount: number;
+  chaknaLevel: "none" | "light" | "heavy";
+  fastestBeerSeconds: number | null; fastestBeerIsPR: boolean;
+}
+
+const EMPTY_SESSION: SessionState = {
+  id: null, venueName: "", startTime: null, drinks: [],
+  washroomCount: 0, burpCount: 0, chaknaLevel: "none",
+  fastestBeerSeconds: null, fastestBeerIsPR: false,
+};
+
+export default function SessionPage() {
+  const { user } = useUser();
+  const router = useRouter();
+  const { enqueue, queueCount, justSynced } = useOfflineQueue();
+
+  const [session, setSession] = useState<SessionState>(EMPTY_SESSION);
+  const [extrasOpen, setExtrasOpen] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const [venueInput, setVenueInput] = useState("");
+  const [showStart, setShowStart] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("dv-active-session");
+    if (saved) { try { setSession(JSON.parse(saved)); setShowStart(false); } catch {} }
+  }, []);
+
+  useEffect(() => {
+    if (session.id) localStorage.setItem("dv-active-session", JSON.stringify(session));
+  }, [session]);
+
+  const startSession = async () => {
+    if (starting) return;
+    setStarting(true);
+    let lat: number | null = null, lng: number | null = null;
+    try {
+      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+      );
+      lat = pos.coords.latitude; lng = pos.coords.longitude;
+    } catch {}
+    const res = await fetch("/api/sessions", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ venue_name: venueInput || null, location_lat: lat, location_lng: lng }),
+    });
+    if (res.ok) {
+      const { session: s } = await res.json();
+      setSession((p) => ({ ...p, id: s.id, venueName: venueInput, startTime: s.start_time }));
+      setShowStart(false);
+    }
+    setStarting(false);
+  };
+
+  const logDrink = useCallback(async (type: string) => {
+    if (!session.id || logging) return;
+    setLogging(true);
+    const logged_at = new Date().toISOString();
+    setSession((s) => ({ ...s, drinks: [...s.drinks, { type, logged_at }] }));
+    if (!navigator.onLine) {
+      await enqueue({ type: "LOG_DRINK", payload: { session_id: session.id, type, logged_at }, endpoint: "/api/drinks", method: "POST" });
+      setLogging(false); return;
+    }
+    try {
+      const res = await fetch("/api/drinks", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: session.id, type, logged_at }),
+      });
+      if (res.ok) {
+        const { is_pr, drink } = await res.json();
+        if (type === "beer") setSession((s) => ({ ...s, fastestBeerIsPR: is_pr, fastestBeerSeconds: drink.duration_seconds ?? s.fastestBeerSeconds }));
+      }
+    } catch {
+      await enqueue({ type: "LOG_DRINK", payload: { session_id: session.id, type, logged_at }, endpoint: "/api/drinks", method: "POST" });
+    }
+    setLogging(false);
+  }, [session.id, logging, enqueue]);
+
+  const handleExtrasUpdate = async (data: { burpCount?: number; washroomCount?: number; chaknaLevel?: "none" | "light" | "heavy" }) => {
+    const updated = { burpCount: data.burpCount ?? session.burpCount, washroomCount: data.washroomCount ?? session.washroomCount, chaknaLevel: data.chaknaLevel ?? session.chaknaLevel };
+    setSession((s) => ({ ...s, ...updated }));
+    if (session.id) await fetch(`/api/sessions/${session.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ washroom_count: updated.washroomCount, burp_count: updated.burpCount, chakna_level: updated.chaknaLevel }) });
+  };
+
+  const endSession = async () => {
+    if (!session.id) return;
+    await fetch(`/api/sessions/${session.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ end_time: new Date().toISOString() }) });
+    localStorage.removeItem("dv-active-session");
+    router.push(`/morning-card?sessionId=${session.id}`);
+  };
+
+  const userName = user?.fullName ?? "User";
+  const userImageUrl = user?.imageUrl ?? null;
+
+  if (showStart) {
+    return <SessionStartScreen venueInput={venueInput} onVenueChange={setVenueInput} onStart={startSession} starting={starting} userName={userName} userImageUrl={userImageUrl} />;
+  }
+
+  return (
+    <>
+      <LiveSessionScreen session={session} onEnd={endSession} onLogDrink={logDrink} onOpenExtras={() => setExtrasOpen(true)} logging={logging} userName={userName} userImageUrl={userImageUrl} queueCount={queueCount} justSynced={justSynced} />
+      <ExtrasSheet open={extrasOpen} onClose={() => setExtrasOpen(false)} burpCount={session.burpCount} washroomCount={session.washroomCount} chaknaLevel={session.chaknaLevel} onUpdate={handleExtrasUpdate} />
+    </>
+  );
+}
