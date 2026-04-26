@@ -74,8 +74,8 @@ export default function RootLayout({
           - The outer div fills the viewport with the dark background on wide screens.
           - The inner div constrains content to 390px and centers it.
         */}
-        <div className="dark min-h-screen bg-[#111111] flex flex-col items-center">
-          <div className="w-full max-w-[390px] flex flex-col min-h-screen relative bg-[#111111]">
+        <div className="dark min-h-screen bg-background flex flex-col items-center">
+          <div className="w-full max-w-[390px] flex flex-col min-h-screen relative bg-background overflow-x-clip">
             <Providers>
               {children}
               <InstallPrompt />

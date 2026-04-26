@@ -153,7 +153,7 @@ export default function OtherProfilePage() {
                 "rounded-full text-xs font-medium h-8 px-4",
                 following
                   ? "border-border text-muted-foreground"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/90"
               )}
             >
               {following ? "Following" : "Follow"}
@@ -177,7 +177,7 @@ export default function OtherProfilePage() {
             <Card key={s.label} className="bg-card border-border py-0 gap-0">
               <CardContent className="px-3 py-2.5">
                 <div className="dv-stat-label">{s.label}</div>
-                <div className={cn("text-lg font-medium text-foreground mt-0.5", s.capitalize && "capitalize")}>
+                <div className={cn("text-lg font-heading font-medium text-foreground mt-0.5", s.capitalize && "capitalize")}>
                   {s.value}
                 </div>
               </CardContent>

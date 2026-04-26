@@ -3,6 +3,10 @@
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
+// Fix #4: use CSS variables instead of hardcoded hex values in SVG props
+const ACTIVE_COLOR = "var(--primary)";
+const INACTIVE_COLOR = "rgba(255,255,255,0.35)";
+
 const tabs = [
   {
     id: "session",
@@ -12,12 +16,12 @@ const tabs = [
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
         <circle
           cx="9" cy="9" r="7"
-          stroke={active ? "#E8621A" : "rgba(255,255,255,0.35)"}
+          stroke={active ? ACTIVE_COLOR : INACTIVE_COLOR}
           strokeWidth="1.2"
         />
         <circle
           cx="9" cy="9" r="2.5"
-          fill={active ? "#E8621A" : "rgba(255,255,255,0.35)"}
+          fill={active ? ACTIVE_COLOR : INACTIVE_COLOR}
         />
       </svg>
     ),
@@ -30,7 +34,7 @@ const tabs = [
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
         <path
           d="M3 14 L7 8 L10 11 L13 5 L16 9"
-          stroke={active ? "#E8621A" : "rgba(255,255,255,0.35)"}
+          stroke={active ? ACTIVE_COLOR : INACTIVE_COLOR}
           strokeWidth="1.2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -46,12 +50,12 @@ const tabs = [
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
         <circle
           cx="9" cy="7" r="3.5"
-          stroke={active ? "#E8621A" : "rgba(255,255,255,0.35)"}
+          stroke={active ? ACTIVE_COLOR : INACTIVE_COLOR}
           strokeWidth="1.2"
         />
         <path
           d="M2 16 C2 12 16 12 16 16"
-          stroke={active ? "#E8621A" : "rgba(255,255,255,0.35)"}
+          stroke={active ? ACTIVE_COLOR : INACTIVE_COLOR}
           strokeWidth="1.2"
         />
       </svg>
@@ -74,7 +78,9 @@ export function BottomNav() {
             onClick={() => router.push(tab.href)}
             className={cn(
               "flex flex-col items-center justify-center gap-1 flex-1 py-2.5 border-0 bg-transparent cursor-pointer",
-              "text-[9px] tracking-wide",
+              "text-[10px] tracking-wide",
+              // Fix #5: use active: not hover: for touch-friendly states
+              "active:opacity-70 transition-opacity",
               active ? "text-primary" : "text-muted-foreground"
             )}
             aria-current={active ? "page" : undefined}

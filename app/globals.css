@@ -119,8 +119,8 @@
     font-family: var(--font-sans, "Inter", system-ui, sans-serif);
     background: transparent; /* Centering shell owns bg */
     color: var(--text-primary);
-    overflow-x: hidden;
-    /* NO max-width or margin here — layout.tsx .dark shell handles centering */
+    /* Fix #8: overflow-x: hidden removed — any horizontal overflow is clipped
+       by the max-w-[390px] centering shell in layout.tsx via overflow-x: clip */
     min-height: 100dvh;
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -282,6 +282,12 @@
   transform: scale(0.9);
 }
 
+/* Fix #10: accessibility focus ring for keyboard / switch access */
+.dv-drink-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .dv-drink-btn--main {
   background: var(--brand);
   border-color: var(--brand);
@@ -352,6 +358,12 @@
 
 .dv-cheers-btn:active {
   transform: scale(0.95);
+}
+
+/* Fix #10: focus ring for keyboard / switch access */
+.dv-cheers-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .dv-cheers-btn--active {

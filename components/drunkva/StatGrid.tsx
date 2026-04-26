@@ -31,7 +31,7 @@ function StatCell({ label, children }: StatCellProps) {
   return (
     <div className="dv-surface p-3">
       <div className="dv-stat-label">{label}</div>
-      <div className="text-lg font-medium text-foreground mt-0.5 flex items-baseline gap-1">
+      <div className="text-lg font-heading font-medium text-foreground mt-0.5 flex items-baseline gap-1">
         {children}
       </div>
     </div>

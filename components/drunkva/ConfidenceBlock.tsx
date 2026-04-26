@@ -34,7 +34,7 @@ export function ConfidenceBlock({ stage, confidence, progressPct }: ConfidenceBl
           <span
             key={s.name}
             className={cn(
-              "text-[9px] transition-colors duration-300",
+              "text-[10px] transition-colors duration-300",
               s.name === stage
                 ? "text-primary font-medium"
                 : "text-muted-foreground font-normal"

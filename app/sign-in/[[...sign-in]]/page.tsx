@@ -2,37 +2,22 @@ import { SignIn } from "@clerk/nextjs";
 
 export default function SignInPage() {
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        background: "#111111",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "0 20px",
-        gap: 32,
-      }}
-    >
+    // Fix #4: outer container uses Tailwind classes instead of inline style={{}}
+    <div className="min-h-dvh bg-background flex flex-col items-center justify-center px-5 gap-8">
       {/* Drunkva branding above Clerk box */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      <div className="flex flex-col items-center gap-3">
         <svg width="48" height="48" viewBox="0 0 22 22" fill="none">
           <polygon points="11,14 2,18 11,6" fill="#C44D0E" opacity="0.85" />
-          <polygon points="11,2 20,18 11,14 2,18" fill="#E8621A" />
+          <polygon points="11,2 20,18 11,14 2,18" fill="var(--primary)" />
           <polygon points="11,8 16,16 11,14 6,16" fill="#C44D0E" opacity="0.5" />
         </svg>
         <span
-          style={{
-            fontSize: 22,
-            fontWeight: 600,
-            color: "#E8621A",
-            letterSpacing: "0.04em",
-            fontFamily: "Inter, sans-serif",
-          }}
+          className="font-semibold text-primary tracking-widest"
+          style={{ fontSize: 22 }}
         >
           DRUNKVA
         </span>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", textAlign: "center", lineHeight: 1.5, maxWidth: 260 }}>
+        <p className="text-[13px] text-muted-foreground text-center leading-relaxed max-w-[260px]">
           Track every session. Follow your crew. Share your peak.
         </p>
       </div>

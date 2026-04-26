@@ -122,7 +122,7 @@ export function FeedCard({ session, user, currentUserId, onSessionClick }: FeedC
               {session.is_verified && (
                 <span
                   title="Verified by 2+ witnesses"
-                  className="flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-[9px] font-bold shrink-0 mb-0.5"
+                  className="flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold shrink-0 mb-0.5"
                 >
                   ✓
                 </span>
@@ -144,8 +144,8 @@ export function FeedCard({ session, user, currentUserId, onSessionClick }: FeedC
               { val: duration ?? "—", lbl: "hrs" },
             ].map((s) => (
               <div key={s.lbl} className="text-center">
-                <div className="text-[14px] font-medium text-foreground">{s.val}</div>
-                <div className="text-[9px] text-muted-foreground">{s.lbl}</div>
+                <div className="text-[14px] font-heading font-medium text-foreground">{s.val}</div>
+                <div className="text-[10px] text-muted-foreground">{s.lbl}</div>
               </div>
             ))}
           </div>

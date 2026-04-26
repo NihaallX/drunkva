@@ -13,6 +13,10 @@ import {
 import { STAGES, reconstructCurve } from "@/lib/confidence";
 import type { DrinkLog } from "@/lib/confidence";
 
+// Fix #4: CSS variable constant so Recharts props don't contain hardcoded hex
+const PRIMARY = "var(--primary)";
+const BG_CARD = "var(--bg-card)";
+
 interface ConfidenceChartProps {
   drinks: DrinkLog[];
   sessionStart: string;
@@ -82,27 +86,27 @@ export function ConfidenceChart({ drinks, sessionStart, peakConfidence, peakStag
           <Area
             type="monotone"
             dataKey="confidence"
-            stroke="#E8621A"
+            stroke={PRIMARY}
             strokeWidth={2}
-            fill="#E8621A"
+            fill={PRIMARY}
             fillOpacity={0.08}
             dot={false}
-            activeDot={{ r: 4, fill: "#E8621A", stroke: "var(--bg-card)", strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: PRIMARY, stroke: BG_CARD, strokeWidth: 2 }}
           />
 
-          {/* Peak dot — orange, with card-colored border */}
+          {/* Peak dot — primary color, with card-colored border */}
           <ReferenceDot
             x={peakPoint.time}
             y={peakPoint.confidence}
             r={5}
-            fill="#E8621A"
-            stroke="var(--bg-card)"
+            fill={PRIMARY}
+            stroke={BG_CARD}
             strokeWidth={2}
             label={{
               value: `${peakStage} · ${peakConfidence}%`,
               position: "top",
               fontSize: 9,
-              fill: "#E8621A",
+              fill: PRIMARY,
               fontFamily: "Inter, sans-serif",
             }}
           />
