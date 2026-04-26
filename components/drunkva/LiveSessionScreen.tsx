@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { ConfidenceBlock } from "@/components/drunkva/ConfidenceBlock";
 import { StatGrid } from "@/components/drunkva/StatGrid";
@@ -55,15 +56,25 @@ export function LiveSessionScreen({
   queueCount,
   justSynced,
 }: LiveSessionScreenProps) {
-  const conf = calculateConfidence(session.drinks);
-  const progressPct = Math.round(getStageProgress(conf.current) * 100);
+  // Fix #1 — Memoize confidence calc so it only reruns when drinks change,
+  // not on every timer tick from StatGrid's useElapsed.
+  const conf = useMemo(
+    () => calculateConfidence(session.drinks),
+    [session.drinks]
+  );
 
-  const drinkCounts: Record<string, number> = {};
-  session.drinks.forEach((d) => {
-    drinkCounts[d.type] = (drinkCounts[d.type] ?? 0) + 1;
-  });
-  const dominantDrink =
-    Object.entries(drinkCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "beer";
+  const progressPct = useMemo(
+    () => Math.round(getStageProgress(conf.current) * 100),
+    [conf.current]
+  );
+
+  const dominantDrink = useMemo(() => {
+    const drinkCounts: Record<string, number> = {};
+    session.drinks.forEach((d) => {
+      drinkCounts[d.type] = (drinkCounts[d.type] ?? 0) + 1;
+    });
+    return Object.entries(drinkCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "beer";
+  }, [session.drinks]);
 
   return (
     <div className="dv-page bg-background">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import html2canvas from "html2canvas";
+// html2canvas is dynamically imported in exportAndShare to keep it out of the initial bundle.
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
@@ -124,7 +124,7 @@ function ShareOverlay({ session, drinks, venueName, title, bgStyle, template, ov
                 <div className="text-[22px] font-medium text-white leading-tight flex items-baseline gap-1">
                   {fastestBeer != null ? formatDuration(fastestBeer) : "—"}
                   {fastestBeerIsPR && (
-                    <span className="text-[8px] bg-[#E8621A] text-white px-1.5 py-0.5 rounded-full font-medium">
+                    <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-medium">
                       PR
                     </span>
                   )}
@@ -141,10 +141,10 @@ function ShareOverlay({ session, drinks, venueName, title, bgStyle, template, ov
 
         {/* Watermark */}
         <div className="flex justify-between items-center mt-2">
-          <span className="text-[9px] text-white/25">
+          <span className="text-[10px] text-white/25">
             {session?.start_time && new Date(session.start_time).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
           </span>
-          <span className="text-[9px] text-white/25 tracking-wide">DRUNKVA</span>
+          <span className="text-[10px] text-white/25 tracking-wide">DRUNKVA</span>
         </div>
       </div>
     </div>
@@ -239,6 +239,9 @@ export function MorningCardInner() {
     if (!overlayRef.current || exporting) return;
     setExporting(true);
     try {
+      // Fix #2: dynamic import keeps html2canvas out of the initial bundle.
+      // It will only load when the user taps Share on step 3.
+      const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(overlayRef.current, { scale: 3, useCORS: true, backgroundColor: null, logging: false });
       canvas.toBlob(async (blob) => {
         if (!blob) return;
@@ -307,7 +310,7 @@ export function MorningCardInner() {
               </div>
             </div>
             <Button id="step1-next" onClick={() => { setStep(2); generateTitle(); }}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-[15px] font-medium">
+              className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
               Generate title →
             </Button>
           </div>
@@ -341,7 +344,7 @@ export function MorningCardInner() {
             />
             {/* Title is NOT required — user can skip with empty title */}
             <Button id="step2-next" onClick={() => setStep(3)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-[15px] font-medium">
+              className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
               Choose photo →
             </Button>
           </div>
@@ -408,7 +411,7 @@ export function MorningCardInner() {
 
             {/* Share button */}
             <Button id="export-share-btn" onClick={exportAndShare} disabled={exporting}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-[15px] font-medium">
+              className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
               {exporting ? "Exporting…" : "Share 🔗"}
             </Button>
           </div>

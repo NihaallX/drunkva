@@ -4,11 +4,19 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
-import { ConfidenceChart } from "@/components/drunkva/ConfidenceChart";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const ConfidenceChart = dynamic(
+  () => import("@/components/drunkva/ConfidenceChart").then((m) => ({ default: m.ConfidenceChart })),
+  {
+    ssr: false,
+    loading: () => <div className="h-[180px] animate-pulse rounded-lg bg-card" />,
+  }
+);
 import { BottomNav } from "@/components/drunkva/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -157,7 +165,7 @@ function WitnessBanner({ sessionId, taggerName, peakStage, onRespond }: WitnessB
         <Button
           id="witness-confirm"
           size="sm"
-          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          className="flex-1 bg-primary text-primary-foreground active:bg-primary/90"
           onClick={() => respond(true)}
         >
           Confirm ✓
@@ -267,7 +275,7 @@ export default function SessionDetailPage() {
               <span className="text-[11px] text-muted-foreground">by {session.real_name}</span>
               {session.is_verified && (
                 <span className="flex items-center gap-1 text-[10px] text-primary font-medium">
-                  <span className="w-3.5 h-3.5 rounded-full bg-primary text-white flex items-center justify-center text-[8px] font-bold">✓</span>
+                  <span className="w-3.5 h-3.5 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">✓</span>
                   Verified by {confirmedCount} witnesses
                 </span>
               )}
@@ -294,7 +302,7 @@ export default function SessionDetailPage() {
                     <div key={w.id} className="flex items-center gap-1.5">
                       <Avatar className="size-6">
                         {w.avatar_url && <AvatarImage src={w.avatar_url} alt={w.real_name} />}
-                        <AvatarFallback className="text-[9px] bg-muted text-muted-foreground">
+                        <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
                           {getInitials(w.real_name)}
                         </AvatarFallback>
                       </Avatar>
@@ -335,7 +343,7 @@ export default function SessionDetailPage() {
           <Button
             id="share-session-btn"
             onClick={() => router.push(`/morning-card?sessionId=${session.id}`)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-[15px] font-medium"
+            className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium"
           >
             Share this session
           </Button>
