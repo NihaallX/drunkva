@@ -1,0 +1,411 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Drunkva Design Tokens ────────────────────────────────────────────────── */
+/* These replace the template's default token values — structure is preserved.  */
+:root {
+  /* Force dark color scheme — prevents browser chrome (scrollbars, inputs) from going light */
+  color-scheme: dark;
+
+  /* Brand */
+  --brand: #E8621A;
+  --brand-dim: #C44D0E;
+  --brand-glow: rgba(232, 98, 26, 0.15);
+
+  /* Backgrounds */
+  --bg-base: #111111;
+  --bg-card: #1A1A1A;
+  --bg-card-elevated: #222222;
+  --bg-input: #1E1E1E;
+
+  /* shadcn/ui token map — dark by default, no .dark toggle needed */
+  --background: #111111;
+  --foreground: rgba(255, 255, 255, 0.92);
+  --card: #1A1A1A;
+  --card-foreground: rgba(255, 255, 255, 0.92);
+  --popover: #222222;
+  --popover-foreground: rgba(255, 255, 255, 0.92);
+  --primary: #E8621A;
+  --primary-foreground: #ffffff;
+  --secondary: #1E1E1E;
+  --secondary-foreground: rgba(255, 255, 255, 0.7);
+  --muted: #1E1E1E;
+  --muted-foreground: rgba(255, 255, 255, 0.45);
+  --accent: rgba(232, 98, 26, 0.12);
+  --accent-foreground: #E8621A;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: #1E1E1E;
+  --ring: rgba(232, 98, 26, 0.5);
+  --radius: 0.625rem;
+
+  /* Sidebar tokens */
+  --sidebar: #111111;
+  --sidebar-foreground: rgba(255, 255, 255, 0.92);
+  --sidebar-primary: #E8621A;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1A1A1A;
+  --sidebar-accent-foreground: rgba(255, 255, 255, 0.92);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(232, 98, 26, 0.5);
+
+  /* Drunkva text scale */
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.45);
+  --text-tertiary: rgba(255, 255, 255, 0.28);
+
+  /* Drunkva border scale */
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-brand: rgba(232, 98, 26, 0.4);
+
+  /* Radius scale */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+}
+
+@theme inline {
+  --font-sans: var(--font-sans, "Inter", system-ui, sans-serif);
+  --font-heading: var(--font-heading, "Space Grotesk", system-ui, sans-serif);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────────────────*/
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    /* Fill entire viewport with dark bg so no white flash on wide screens */
+    background-color: #111111;
+    /* Prevents layout shift when drawers/modals add overflow:hidden to body */
+    scrollbar-gutter: stable;
+    height: 100%;
+  }
+
+  body {
+    @apply text-foreground antialiased;
+    font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+    background: transparent; /* Centering shell owns bg */
+    color: var(--text-primary);
+    overflow-x: hidden;
+    /* NO max-width or margin here — layout.tsx .dark shell handles centering */
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Heading font — Space Grotesk for all display/heading text */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading, "Space Grotesk", system-ui, sans-serif);
+  }
+}
+
+/* ─── Drunkva Named Utility Classes ──────────────────────────────────────────*/
+/* All styles that cannot be expressed with stock Tailwind utilities live here. */
+/* Components must reference these class names — zero inline styles allowed.    */
+
+/* Surfaces */
+.dv-surface {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.dv-surface-elevated {
+  background: var(--bg-card-elevated);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+/* Stage display — uses heading font for brand impact */
+.dv-stage {
+  font-size: 32px;
+  font-weight: 600;
+  font-family: var(--font-heading, "Space Grotesk", system-ui, sans-serif);
+  color: var(--brand);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.dv-stage-xl {
+  font-size: 36px;
+  font-weight: 600;
+  font-family: var(--font-heading, "Space Grotesk", system-ui, sans-serif);
+  color: var(--brand);
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+/* Confidence % sub-label */
+.dv-conf-pct {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* LIVE badge */
+.dv-live-badge {
+  background: var(--brand);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.04em;
+  animation: dv-pulse 2s infinite;
+}
+
+/* PR pill */
+.dv-pr-pill {
+  display: inline-block;
+  background: rgba(232, 98, 26, 0.15);
+  color: var(--brand);
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Stat label */
+.dv-stat-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Session title italic — heading font for visual hierarchy */
+.dv-session-title {
+  font-size: 12px;
+  font-family: var(--font-heading, "Space Grotesk", system-ui, sans-serif);
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Confidence progress bar */
+.dv-bar-track {
+  height: 6px;
+  background: var(--bg-card-elevated);
+  border-radius: 3px;
+  overflow: visible;
+  position: relative;
+}
+
+.dv-bar-fill {
+  height: 100%;
+  background: var(--brand);
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+.dv-bar-dot {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 0 8px rgba(232, 98, 26, 0.5);
+}
+
+/* Bottom nav */
+.dv-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 390px;
+  border-top: 0.5px solid var(--border-default);
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
+}
+
+/* Quick log drink button */
+.dv-drink-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-default);
+  background: var(--bg-card);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.dv-drink-btn:active {
+  transform: scale(0.9);
+}
+
+.dv-drink-btn--main {
+  background: var(--brand);
+  border-color: var(--brand);
+  box-shadow: 0 4px 20px rgba(232, 98, 26, 0.35);
+}
+
+/* Photo overlay scrim */
+.dv-scrim {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.6) 30%,
+    rgba(0, 0, 0, 0) 60%
+  );
+}
+
+/* Page container — clears bottom nav */
+.dv-page {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  min-height: 100dvh;
+}
+
+/* Sticky nav bar */
+.dv-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 0.5px solid var(--border-default);
+}
+
+/* Input */
+.dv-input {
+  background: var(--bg-input);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.dv-input:focus {
+  border-color: var(--border-brand);
+}
+
+/* Cheers button */
+.dv-cheers-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-default);
+  background: var(--bg-card);
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  font-family: inherit;
+}
+
+.dv-cheers-btn:active {
+  transform: scale(0.95);
+}
+
+.dv-cheers-btn--active {
+  color: var(--brand);
+  border-color: var(--border-brand);
+  background: var(--brand-glow);
+}
+
+/* Feed item separator */
+.dv-feed-item {
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border-default);
+}
+
+/* ─── Keyframe Animations ─────────────────────────────────────────────────── */
+@keyframes dv-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes dv-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dv-animate-up {
+  animation: dv-slide-up 0.3s ease forwards;
+}
+
+/* Drink button bounce — triggered on tap via JS */
+@keyframes dv-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.88); }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.dv-pop {
+  animation: dv-pop 200ms ease-out;
+}
+
+/* Skeleton shimmer — overrides the shadcn default with Drunkva colors */
+[data-slot="skeleton"] {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 25%,
+    var(--bg-card-elevated) 50%,
+    var(--bg-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
