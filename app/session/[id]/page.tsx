@@ -22,11 +22,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDuration, formatSessionDuration } from "@/lib/confidence";
 import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
+import { useUser as useClerkUser } from "@clerk/nextjs";
 
-let useUser: () => { user: typeof MOCK_USER | null };
+let useUser: () => { user: typeof MOCK_USER | null | any };
 if (clerkEnabled) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  useUser = require("@clerk/nextjs").useUser;
+  useUser = useClerkUser;
 } else {
   useUser = () => ({ user: MOCK_USER });
 }

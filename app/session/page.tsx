@@ -7,11 +7,11 @@ import { LiveSessionScreen } from "@/components/drunkva/LiveSessionScreen";
 import { ExtrasSheet } from "@/components/drunkva/ExtrasSheet";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
+import { useUser as useClerkUser } from "@clerk/nextjs";
 
-let useUser: () => { user: typeof MOCK_USER | null };
+let useUser: () => { user: typeof MOCK_USER | null | any };
 if (clerkEnabled) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  useUser = require("@clerk/nextjs").useUser;
+  useUser = useClerkUser;
 } else {
   useUser = () => ({ user: MOCK_USER });
 }
