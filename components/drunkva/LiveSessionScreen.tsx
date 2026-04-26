@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { calculateConfidence, getStageProgress } from "@/lib/confidence";
+import { useSessionTimer } from "@/hooks/useSessionTimer";
+import { formatLiveDuration } from "@/lib/utils";
 
 function getInitials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -25,6 +27,7 @@ interface SessionState {
   id: string | null;
   venueName: string;
   startTime: string | null;
+  endTime: string | null;
   drinks: DrinkLog[];
   washroomCount: number;
   burpCount: number;
@@ -56,6 +59,8 @@ export function LiveSessionScreen({
   queueCount,
   justSynced,
 }: LiveSessionScreenProps) {
+  const elapsedSeconds = useSessionTimer(session.startTime, session.endTime);
+
   // Fix #1 — Memoize confidence calc so it only reruns when drinks change,
   // not on every timer tick from StatGrid's useElapsed.
   const conf = useMemo(
@@ -148,9 +153,7 @@ export function LiveSessionScreen({
           dominantDrink={dominantDrink}
           fastestBeerSeconds={session.fastestBeerSeconds}
           fastestBeerIsPR={session.fastestBeerIsPR}
-          sessionStartMs={
-            session.startTime ? new Date(session.startTime).getTime() : Date.now()
-          }
+          liveDurationFormatted={formatLiveDuration(elapsedSeconds)}
           washroomCount={session.washroomCount}
         />
 

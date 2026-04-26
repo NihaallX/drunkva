@@ -56,18 +56,27 @@ export async function POST(req: Request) {
     WHERE id = ${session_id}
   `;
 
-  // PR check
-  const pr = await sql`
-    SELECT MIN(d.duration_seconds) as best
-    FROM drinks d
-    JOIN sessions s ON s.id = d.session_id
-    WHERE s.user_id = ${user.id} AND d.type = ${type} AND d.duration_seconds IS NOT NULL
-  `;
+  // PR check using cached user PBs
+  let is_pr = false;
+  if (duration_seconds !== null) {
+    const [userRow] = await sql`SELECT * FROM users WHERE id = ${user.id}`;
+    
+    // Dynamically access the correct PB column based on the drink type
+    const pbCol = `pb_${type}_seconds`;
+    const currentPB = userRow?.[pbCol];
 
-  const is_pr =
-    duration_seconds !== null &&
-    pr[0]?.best !== null &&
-    Number(pr[0].best) === duration_seconds;
+    is_pr = currentPB === null || duration_seconds < currentPB;
+
+    if (is_pr) {
+      // It's a new PR, update the cached PB atomically
+      // We have to execute explicit queries because Neon's tagged template requires static strings
+      if (type === 'beer') await sql`UPDATE users SET pb_beer_seconds = ${duration_seconds} WHERE id = ${user.id}`;
+      else if (type === 'shot') await sql`UPDATE users SET pb_shot_seconds = ${duration_seconds} WHERE id = ${user.id}`;
+      else if (type === 'wine') await sql`UPDATE users SET pb_wine_seconds = ${duration_seconds} WHERE id = ${user.id}`;
+      else if (type === 'cocktail') await sql`UPDATE users SET pb_cocktail_seconds = ${duration_seconds} WHERE id = ${user.id}`;
+      else if (type === 'spirit') await sql`UPDATE users SET pb_spirit_seconds = ${duration_seconds} WHERE id = ${user.id}`;
+    }
+  }
 
   return NextResponse.json({ drink, confidence: conf, is_pr }, { status: 201 });
 }

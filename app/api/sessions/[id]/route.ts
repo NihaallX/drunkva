@@ -62,3 +62,57 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return NextResponse.json({ session });
 }
+
+// DELETE /api/sessions/[id] — delete session and recalculate PBs
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await getOrCreateUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const [deleted] = await sql`
+    DELETE FROM sessions 
+    WHERE id = ${id} AND user_id = ${user.id}
+    RETURNING id
+  `;
+
+  if (!deleted) return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 });
+
+  // Recalculate affected PBs
+  await sql`
+    UPDATE users u SET pb_beer_seconds = (
+      SELECT MIN(d.duration_seconds) FROM drinks d
+      JOIN sessions s ON d.session_id = s.id
+      WHERE s.user_id = u.id AND d.type = 'beer' AND d.duration_seconds IS NOT NULL
+    ) WHERE id = ${user.id}
+  `;
+  await sql`
+    UPDATE users u SET pb_shot_seconds = (
+      SELECT MIN(d.duration_seconds) FROM drinks d
+      JOIN sessions s ON d.session_id = s.id
+      WHERE s.user_id = u.id AND d.type = 'shot' AND d.duration_seconds IS NOT NULL
+    ) WHERE id = ${user.id}
+  `;
+  await sql`
+    UPDATE users u SET pb_wine_seconds = (
+      SELECT MIN(d.duration_seconds) FROM drinks d
+      JOIN sessions s ON d.session_id = s.id
+      WHERE s.user_id = u.id AND d.type = 'wine' AND d.duration_seconds IS NOT NULL
+    ) WHERE id = ${user.id}
+  `;
+  await sql`
+    UPDATE users u SET pb_cocktail_seconds = (
+      SELECT MIN(d.duration_seconds) FROM drinks d
+      JOIN sessions s ON d.session_id = s.id
+      WHERE s.user_id = u.id AND d.type = 'cocktail' AND d.duration_seconds IS NOT NULL
+    ) WHERE id = ${user.id}
+  `;
+  await sql`
+    UPDATE users u SET pb_spirit_seconds = (
+      SELECT MIN(d.duration_seconds) FROM drinks d
+      JOIN sessions s ON d.session_id = s.id
+      WHERE s.user_id = u.id AND d.type = 'spirit' AND d.duration_seconds IS NOT NULL
+    ) WHERE id = ${user.id}
+  `;
+
+  return NextResponse.json({ success: true });
+}

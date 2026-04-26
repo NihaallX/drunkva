@@ -25,4 +25,27 @@ await sql`
 `;
 console.log('✓ Added unique constraint to session_witnesses');
 
+// 3. Add personal best columns to users
+await sql`
+  ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS pb_beer_seconds INT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS pb_shot_seconds INT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS pb_wine_seconds INT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS pb_cocktail_seconds INT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS pb_spirit_seconds INT DEFAULT NULL
+`;
+console.log('✓ Added pb columns to users');
+
+// 4. Add PR lookup and session lookup indexes
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_drinks_pr_lookup
+  ON drinks (session_id, type, duration_seconds)
+  WHERE duration_seconds IS NOT NULL
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_id
+  ON sessions (user_id)
+`;
+console.log('✓ Added indexes for fast PR lookup');
+
 console.log('All migrations complete');

@@ -1,25 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { formatDuration, formatSessionDuration } from "@/lib/confidence";
+import { formatDuration } from "@/lib/confidence";
 
 interface StatGridProps {
   drinkCount: number;
   dominantDrink: string;
   fastestBeerSeconds: number | null;
   fastestBeerIsPR: boolean;
-  sessionStartMs: number;
+  liveDurationFormatted: string;
   washroomCount: number;
-}
-
-function useElapsed(startMs: number) {
-  const [elapsed, setElapsed] = useState(Date.now() - startMs);
-  useEffect(() => {
-    const id = setInterval(() => setElapsed(Date.now() - startMs), 1000);
-    return () => clearInterval(id);
-  }, [startMs]);
-  return elapsed;
 }
 
 interface StatCellProps {
@@ -43,11 +33,9 @@ export function StatGrid({
   dominantDrink,
   fastestBeerSeconds,
   fastestBeerIsPR,
-  sessionStartMs,
+  liveDurationFormatted,
   washroomCount,
 }: StatGridProps) {
-  const elapsed = useElapsed(sessionStartMs);
-
   return (
     <div className="grid grid-cols-2 gap-2">
       <StatCell label="Drinks">
@@ -63,7 +51,7 @@ export function StatGrid({
       </StatCell>
 
       <StatCell label="Duration">
-        {formatSessionDuration(elapsed)}
+        {liveDurationFormatted}
         <span className="text-[11px] text-muted-foreground font-normal">hrs</span>
       </StatCell>
 

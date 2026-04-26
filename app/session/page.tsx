@@ -18,14 +18,20 @@ if (clerkEnabled) {
 
 interface DrinkLog { type: string; logged_at: string; }
 interface SessionState {
-  id: string | null; venueName: string; startTime: string | null;
-  drinks: DrinkLog[]; washroomCount: number; burpCount: number;
+  id: string | null;
+  venueName: string;
+  startTime: string | null;
+  endTime: string | null;
+  drinks: DrinkLog[];
+  washroomCount: number;
+  burpCount: number;
   chaknaLevel: "none" | "light" | "heavy";
-  fastestBeerSeconds: number | null; fastestBeerIsPR: boolean;
+  fastestBeerSeconds: number | null;
+  fastestBeerIsPR: boolean;
 }
 
 const EMPTY_SESSION: SessionState = {
-  id: null, venueName: "", startTime: null, drinks: [],
+  id: null, venueName: "", startTime: null, endTime: null, drinks: [],
   washroomCount: 0, burpCount: 0, chaknaLevel: "none",
   fastestBeerSeconds: null, fastestBeerIsPR: false,
 };
