@@ -157,11 +157,25 @@ export default function SessionPage() {
           setSession((s) => {
             const nextDrinks = s.drinks.map((d) => (d.id === tempId ? drink : d));
             if (type === "beer") {
+              // Recalculate fastest beer from all beers
+              const beers = nextDrinks.filter((d) => d.type === "beer");
+              let fastest: typeof drink | null = null;
+              let fastestSeconds: number | null = null;
+              
+              for (const b of beers) {
+                if (b.duration_seconds != null && (b.duration_seconds >= 10 && b.duration_seconds <= 900)) {
+                  if (fastest === null || b.duration_seconds < (fastestSeconds ?? Infinity)) {
+                    fastest = b;
+                    fastestSeconds = b.duration_seconds;
+                  }
+                }
+              }
+              
               return {
                 ...s,
                 drinks: nextDrinks,
-                fastestBeerIsPR: Boolean(is_pr),
-                fastestBeerSeconds: drink.duration_seconds ?? s.fastestBeerSeconds,
+                fastestBeerIsPR: fastest?.id === drink.id ? Boolean(is_pr) : s.fastestBeerIsPR,
+                fastestBeerSeconds: fastestSeconds,
               };
             }
             return { ...s, drinks: nextDrinks };
