@@ -100,6 +100,9 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
   const fastestStat = getFastestStat(drinks, session);
   const dominantDrink = getDominantDrinkLabel(drinks, session).toLowerCase();
 
+  const duration = getSessionDuration(session);
+  const showDuration = duration !== "-";
+
   return (
     <div className="absolute inset-0 text-white">
       <div
@@ -114,13 +117,16 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
       <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-0 px-8 text-center">
         <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
 
-        <div className="h-5" />
+        <div className="h-7" />
 
         <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
 
-        <div className="h-5" />
-
-        <Stat value={getSessionDuration(session)} label="Time" />
+        {showDuration && (
+          <>
+            <div className="h-7" />
+            <Stat value={duration} label="Time" />
+          </>
+        )}
 
         <div className="h-7" />
 
