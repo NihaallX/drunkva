@@ -33,8 +33,7 @@ export default function EditProfilePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data?.user) {
-          if (data.user.real_name) setRealName(data.user.real_name);
-          if (data.user.alias) setAlias(data.user.alias);
+          // Leaving boxes blank per UX instructions
         }
       })
       .catch(() => {});
