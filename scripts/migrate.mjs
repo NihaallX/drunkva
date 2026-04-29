@@ -44,7 +44,93 @@ await sql`
 `;
 console.log('Added total_duration_seconds and active_duration_seconds to sessions');
 
-// 5. Add indexes for PR lookup and cutoff jobs
+// 5. Add timing metadata column to drinks
+await sql`
+  ALTER TABLE drinks
+  ADD COLUMN IF NOT EXISTS timing_method TEXT DEFAULT 'gap'
+`;
+await sql`
+  ALTER TABLE drinks
+  DROP CONSTRAINT IF EXISTS drinks_timing_method_check
+`;
+await sql`
+  ALTER TABLE drinks
+  ADD CONSTRAINT drinks_timing_method_check CHECK (timing_method IN ('gap', 'stopwatch'))
+`;
+await sql`
+  UPDATE drinks
+  SET timing_method = 'gap'
+  WHERE timing_method IS NULL
+`;
+console.log('Added timing_method to drinks');
+
+// 6. Backfill duration quality bounds for speed metrics
+await sql`
+  UPDATE drinks
+  SET duration_seconds = NULL
+  WHERE duration_seconds > 900
+`;
+await sql`
+  UPDATE drinks
+  SET duration_seconds = NULL
+  WHERE duration_seconds < 10
+`;
+console.log('Backfilled invalid drink durations to NULL');
+
+// 7. Recalculate all PB columns from cleaned durations
+await sql`
+  UPDATE users u SET pb_beer_seconds = (
+    SELECT MIN(d.duration_seconds)
+    FROM drinks d
+    JOIN sessions s ON d.session_id = s.id
+    WHERE s.user_id = u.id
+      AND d.type = 'beer'
+      AND d.duration_seconds IS NOT NULL
+  )
+`;
+await sql`
+  UPDATE users u SET pb_shot_seconds = (
+    SELECT MIN(d.duration_seconds)
+    FROM drinks d
+    JOIN sessions s ON d.session_id = s.id
+    WHERE s.user_id = u.id
+      AND d.type = 'shot'
+      AND d.duration_seconds IS NOT NULL
+  )
+`;
+await sql`
+  UPDATE users u SET pb_wine_seconds = (
+    SELECT MIN(d.duration_seconds)
+    FROM drinks d
+    JOIN sessions s ON d.session_id = s.id
+    WHERE s.user_id = u.id
+      AND d.type = 'wine'
+      AND d.duration_seconds IS NOT NULL
+  )
+`;
+await sql`
+  UPDATE users u SET pb_cocktail_seconds = (
+    SELECT MIN(d.duration_seconds)
+    FROM drinks d
+    JOIN sessions s ON d.session_id = s.id
+    WHERE s.user_id = u.id
+      AND d.type = 'cocktail'
+      AND d.duration_seconds IS NOT NULL
+  )
+`;
+await sql`
+  UPDATE users u SET pb_spirit_seconds = (
+    SELECT MIN(d.duration_seconds)
+    FROM drinks d
+    JOIN sessions s ON d.session_id = s.id
+    WHERE s.user_id = u.id
+      AND d.type = 'spirit'
+      AND d.duration_seconds IS NOT NULL
+  )
+`;
+console.log('Recalculated PB columns after backfill');
+
+// 8. Add indexes for PR lookup and cutoff jobs
 await sql`
   CREATE INDEX IF NOT EXISTS idx_drinks_pr_lookup
   ON drinks (session_id, type, duration_seconds)
@@ -66,4 +152,3 @@ await sql`
 console.log('Added indexes for PR lookup and session cutoff');
 
 console.log('All migrations complete');
-

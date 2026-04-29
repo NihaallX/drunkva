@@ -3,7 +3,7 @@ import { neon } from "@neondatabase/serverless";
 const sql = neon(process.env.DATABASE_URL!);
 export default sql;
 
-// ─── Type helpers ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Type helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface DbUser {
   id: string;
@@ -40,6 +40,7 @@ export interface DbDrink {
   type: "beer" | "shot" | "spirit" | "wine" | "cocktail";
   logged_at: string;
   duration_seconds: number | null;
+  timing_method: "gap" | "stopwatch";
 }
 
 export interface DbCheers {

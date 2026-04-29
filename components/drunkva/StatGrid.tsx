@@ -1,12 +1,13 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { Timer } from "lucide-react";
 import { formatDuration } from "@/lib/confidence";
 
 interface StatGridProps {
   drinkCount: number;
   dominantDrink: string;
-  fastestBeerSeconds: number | null;
+  fastestDrinkSeconds: number | null;
+  fastestDrinkIsStopwatched: boolean;
   fastestBeerIsPR: boolean;
   liveDurationFormatted: string;
   showDurationUnits: boolean;
@@ -32,7 +33,8 @@ function StatCell({ label, children }: StatCellProps) {
 export function StatGrid({
   drinkCount,
   dominantDrink,
-  fastestBeerSeconds,
+  fastestDrinkSeconds,
+  fastestDrinkIsStopwatched,
   fastestBeerIsPR,
   liveDurationFormatted,
   showDurationUnits,
@@ -42,14 +44,13 @@ export function StatGrid({
     <div className="grid grid-cols-2 gap-2">
       <StatCell label="Drinks">
         {drinkCount}
-        <span className="text-[11px] text-muted-foreground font-normal capitalize">
-          {dominantDrink}
-        </span>
+        <span className="text-[11px] text-muted-foreground font-normal capitalize">{dominantDrink}</span>
       </StatCell>
 
       <StatCell label="Fastest">
-        {fastestBeerSeconds != null ? formatDuration(fastestBeerSeconds) : "—"}
-        {fastestBeerIsPR && <span className="dv-pr-pill">PR</span>}
+        {fastestDrinkSeconds != null ? formatDuration(fastestDrinkSeconds) : "-"}
+        {fastestDrinkIsStopwatched && <Timer className="size-3.5 text-muted-foreground" />}
+        {fastestBeerIsPR && dominantDrink === "beer" && <span className="dv-pr-pill">PR</span>}
       </StatCell>
 
       <StatCell label="Duration">

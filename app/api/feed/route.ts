@@ -21,7 +21,11 @@ export async function GET(req: Request) {
         SELECT 1 FROM cheers c WHERE c.session_id = s.id AND c.from_user_id = ${user.id}
       )) as user_has_cheered,
       (SELECT MIN(d.duration_seconds) FROM drinks d
-       WHERE d.session_id = s.id AND d.type = 'beer' AND d.duration_seconds IS NOT NULL
+       WHERE d.session_id = s.id
+         AND d.type = 'beer'
+         AND d.duration_seconds IS NOT NULL
+         AND d.duration_seconds >= 10
+         AND d.duration_seconds <= 900
       ) as fastest_beer_seconds,
       (SELECT COUNT(*)::int FROM session_witnesses sw
        WHERE sw.session_id = s.id AND sw.confirmed = true

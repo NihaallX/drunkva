@@ -1,5 +1,6 @@
 import { formatDuration } from "@/lib/confidence";
 import { formatLiveDuration } from "@/lib/utils";
+import { getPreferredFastestDrink, type TimingMethod } from "@/lib/drink-speed";
 
 export interface ShareOverlaySession {
   start_time: string;
@@ -16,18 +17,7 @@ export interface ShareOverlayDrink {
   type: string;
   logged_at: string;
   duration_seconds?: number | null;
-}
-
-export function getFastestBeer(drinks: ShareOverlayDrink[]): number | null {
-  return drinks
-    .filter((drink) => drink.type === "beer" && drink.duration_seconds != null)
-    .reduce<number | null>(
-      (min, drink) =>
-        drink.duration_seconds != null && (min == null || drink.duration_seconds < min)
-          ? drink.duration_seconds
-          : min,
-      null
-    );
+  timing_method?: TimingMethod;
 }
 
 export function getSessionDuration(session: ShareOverlaySession): string {
@@ -48,20 +38,38 @@ function pluralizeDrinkType(type: string): string {
   return labels[normalized] ?? (normalized.endsWith("S") ? normalized : `${normalized}S`);
 }
 
-export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: ShareOverlaySession): string {
+export function getDominantDrinkType(drinks: ShareOverlayDrink[], session?: ShareOverlaySession): string {
   const sessionDominant = session?.dominantDrink ?? session?.dominant_drink_type;
-  if (sessionDominant) return pluralizeDrinkType(sessionDominant);
-  if (drinks.length === 0) return "DRINKS";
+  if (sessionDominant) return sessionDominant;
+  if (drinks.length === 0) return "beer";
 
   const counts = drinks.reduce<Record<string, number>>((acc, drink) => {
     acc[drink.type] = (acc[drink.type] ?? 0) + 1;
     return acc;
   }, {});
-  const [type] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? ["drink", 0];
-  return pluralizeDrinkType(type);
+  const [type] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? ["beer", 0];
+  return type;
 }
 
-export function getFastestBeerLabel(drinks: ShareOverlayDrink[]): string {
-  const fastestBeer = getFastestBeer(drinks);
-  return fastestBeer != null ? formatDuration(fastestBeer) : "-";
+export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: ShareOverlaySession): string {
+  return pluralizeDrinkType(getDominantDrinkType(drinks, session));
+}
+
+export function getFastestStat(drinks: ShareOverlayDrink[], session?: ShareOverlaySession): {
+  value: string;
+  label: string;
+  isStopwatch: boolean;
+} {
+  const dominantType = getDominantDrinkType(drinks, session);
+  const fastest = getPreferredFastestDrink(drinks, dominantType);
+
+  if (!fastest || fastest.duration_seconds == null) {
+    return { value: "-", label: "FASTEST", isStopwatch: false };
+  }
+
+  return {
+    value: formatDuration(fastest.duration_seconds),
+    label: `FASTEST ${dominantType.toUpperCase()}`,
+    isStopwatch: fastest.timing_method === "stopwatch",
+  };
 }

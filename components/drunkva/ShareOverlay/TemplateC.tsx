@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { Timer } from "lucide-react";
 import { reconstructCurve } from "@/lib/confidence";
 import {
   getDominantDrinkLabel,
-  getFastestBeerLabel,
+  getFastestStat,
   getSessionDuration,
   type ShareOverlayDrink,
   type ShareOverlaySession,
@@ -69,10 +70,12 @@ function Stat({
   value,
   label,
   showPR,
+  showStopwatch,
 }: {
   value: string | number;
   label: string;
   showPR?: boolean;
+  showStopwatch?: boolean;
 }) {
   return (
     <div className="flex min-w-0 flex-1 basis-0 flex-col items-center justify-center text-center">
@@ -80,6 +83,7 @@ function Stat({
         <span className="dv-overlay-text font-heading text-[32px] font-medium leading-none tracking-[-0.02em] text-white">
           {value}
         </span>
+        {showStopwatch && <Timer className="mb-1 size-3 text-white/60" />}
         {showPR && (
           <span className="mb-1 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-medium leading-none text-white">
             PR
@@ -97,6 +101,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
   const graph = buildGraph(session, drinks);
   const stage = session.peak_stage ?? "Baseline";
   const confidence = Math.round(session.peak_confidence_pct ?? 10);
+  const fastestStat = getFastestStat(drinks, session);
 
   return (
     <>
@@ -133,7 +138,12 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
         <div className="flex h-12 w-full items-center">
           <Stat value={drinks.length} label={getDominantDrinkLabel(drinks, session)} />
           <div className="w-px self-stretch bg-white/[0.25]" />
-          <Stat value={getFastestBeerLabel(drinks)} label="FASTEST" showPR={fastestBeerIsPR} />
+          <Stat
+            value={fastestStat.value}
+            label={fastestStat.label}
+            showPR={fastestBeerIsPR && fastestStat.label.includes("BEER")}
+            showStopwatch={fastestStat.isStopwatch}
+          />
           <div className="w-px self-stretch bg-white/[0.25]" />
           <Stat value={getSessionDuration(session)} label="ACTIVE" />
         </div>

@@ -23,6 +23,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDuration } from "@/lib/confidence";
 import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
 import { useUser as useClerkUser } from "@clerk/nextjs";
+import { Timer } from "lucide-react";
+import { getPreferredFastestDrink } from "@/lib/drink-speed";
 
 let useUser: () => { user: typeof MOCK_USER | null | any };
 if (clerkEnabled) {
@@ -55,6 +57,7 @@ interface DrinkRecord {
   type: string;
   logged_at: string;
   duration_seconds: number | null;
+  timing_method: "gap" | "stopwatch";
 }
 
 interface WitnessRecord {
@@ -110,7 +113,10 @@ function DrinkRow({ drink, isLast }: DrinkRowProps) {
           </div>
         </div>
         {drink.duration_seconds != null && (
-          <div className="text-xs text-muted-foreground">{formatDuration(drink.duration_seconds)}</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            {formatDuration(drink.duration_seconds)}
+            {drink.timing_method === "stopwatch" && <Timer className="size-3.5 text-muted-foreground" />}
+          </div>
         )}
       </div>
       {!isLast && <Separator className="bg-border/50" />}
@@ -234,12 +240,7 @@ export default function SessionDetailPage() {
       : null
   );
   const totalDuration = totalDurationSeconds != null ? formatLiveDuration(totalDurationSeconds) : null;
-  const fastestBeer = drinks
-    .filter((d) => d.type === "beer" && d.duration_seconds != null)
-    .reduce<number | null>(
-      (min, d) => (d.duration_seconds != null && (min == null || d.duration_seconds < min) ? d.duration_seconds : min),
-      null
-    );
+  const fastestBeer = getPreferredFastestDrink(drinks, "beer");
 
   const stats: StatCardProps[] = [
     { label: "Peak stage", value: session.peak_stage, highlight: true },
@@ -250,7 +251,11 @@ export default function SessionDetailPage() {
       value: activeDuration ?? "\u2014",
       subtitle: `Total time out: ${totalDuration ?? "\u2014"}`,
     },
-    { label: "Fastest beer", value: fastestBeer != null ? formatDuration(fastestBeer) : "\u2014" },
+    {
+      label: "Fastest beer",
+      value: fastestBeer?.duration_seconds != null ? formatDuration(fastestBeer.duration_seconds) : "\u2014",
+      subtitle: fastestBeer?.timing_method === "stopwatch" ? "Stopwatch timed" : undefined,
+    },
     { label: "Cheers", value: String(cheers_count) },
     { label: "Washroom", value: `${session.washroom_count} trips` },
     { label: "Chakna", value: session.chakna_level ?? "none" },

@@ -16,7 +16,14 @@ if (clerkEnabled) {
   useUser = () => ({ user: MOCK_USER });
 }
 
-interface DrinkLog { type: string; logged_at: string; }
+interface DrinkLog {
+  id?: string;
+  type: string;
+  logged_at: string;
+  duration_seconds?: number | null;
+  timing_method?: "gap" | "stopwatch";
+}
+
 interface SessionState {
   id: string | null;
   venueName: string;
@@ -31,9 +38,16 @@ interface SessionState {
 }
 
 const EMPTY_SESSION: SessionState = {
-  id: null, venueName: "", startTime: null, endTime: null, drinks: [],
-  washroomCount: 0, burpCount: 0, chaknaLevel: "none",
-  fastestBeerSeconds: null, fastestBeerIsPR: false,
+  id: null,
+  venueName: "",
+  startTime: null,
+  endTime: null,
+  drinks: [],
+  washroomCount: 0,
+  burpCount: 0,
+  chaknaLevel: "none",
+  fastestBeerSeconds: null,
+  fastestBeerIsPR: false,
 };
 
 export default function SessionPage() {
@@ -50,7 +64,14 @@ export default function SessionPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem("dv-active-session");
-    if (saved) { try { setSession(JSON.parse(saved)); setShowStart(false); } catch {} }
+    if (saved) {
+      try {
+        setSession(JSON.parse(saved));
+        setShowStart(false);
+      } catch {
+        // ignore corrupted local session payload
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -60,17 +81,28 @@ export default function SessionPage() {
   const startSession = async () => {
     if (starting) return;
     setStarting(true);
-    let lat: number | null = null, lng: number | null = null;
+    let lat: number | null = null;
+    let lng: number | null = null;
     try {
       const pos = await new Promise<GeolocationPosition>((res, rej) =>
         navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
       );
-      lat = pos.coords.latitude; lng = pos.coords.longitude;
-    } catch {}
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch {
+      // location optional
+    }
+
     const res = await fetch("/api/sessions", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ venue_name: venueInput || null, location_lat: lat, location_lng: lng }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        venue_name: venueInput || null,
+        location_lat: lat,
+        location_lng: lng,
+      }),
     });
+
     if (res.ok) {
       const { session: s } = await res.json();
       setSession((p) => ({ ...p, id: s.id, venueName: venueInput, startTime: s.start_time }));
@@ -79,39 +111,104 @@ export default function SessionPage() {
     setStarting(false);
   };
 
-  const logDrink = useCallback(async (type: string) => {
-    if (!session.id || logging) return;
-    setLogging(true);
-    const logged_at = new Date().toISOString();
-    setSession((s) => ({ ...s, drinks: [...s.drinks, { type, logged_at }] }));
-    if (!navigator.onLine) {
-      await enqueue({ type: "LOG_DRINK", payload: { session_id: session.id, type, logged_at }, endpoint: "/api/drinks", method: "POST" });
-      setLogging(false); return;
-    }
-    try {
-      const res = await fetch("/api/drinks", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: session.id, type, logged_at }),
-      });
-      if (res.ok) {
-        const { is_pr, drink } = await res.json();
-        if (type === "beer") setSession((s) => ({ ...s, fastestBeerIsPR: is_pr, fastestBeerSeconds: drink.duration_seconds ?? s.fastestBeerSeconds }));
-      }
-    } catch {
-      await enqueue({ type: "LOG_DRINK", payload: { session_id: session.id, type, logged_at }, endpoint: "/api/drinks", method: "POST" });
-    }
-    setLogging(false);
-  }, [session.id, logging, enqueue]);
+  const logDrink = useCallback(
+    async (type: string, options?: { manualDurationSeconds?: number }) => {
+      if (!session.id || logging) return;
+      setLogging(true);
 
-  const handleExtrasUpdate = async (data: { burpCount?: number; washroomCount?: number; chaknaLevel?: "none" | "light" | "heavy" }) => {
-    const updated = { burpCount: data.burpCount ?? session.burpCount, washroomCount: data.washroomCount ?? session.washroomCount, chaknaLevel: data.chaknaLevel ?? session.chaknaLevel };
+      const logged_at = new Date().toISOString();
+      const tempId = `temp-${Date.now()}`;
+      const manualDurationSeconds = options?.manualDurationSeconds;
+
+      setSession((s) => ({
+        ...s,
+        drinks: [
+          ...s.drinks,
+          {
+            id: tempId,
+            type,
+            logged_at,
+            duration_seconds: manualDurationSeconds ?? null,
+            timing_method: manualDurationSeconds != null ? "stopwatch" : "gap",
+          },
+        ],
+      }));
+
+      const payload: Record<string, unknown> = { session_id: session.id, type, logged_at };
+      if (typeof manualDurationSeconds === "number") {
+        payload.manual_duration_seconds = manualDurationSeconds;
+      }
+
+      if (!navigator.onLine) {
+        await enqueue({ type: "LOG_DRINK", payload, endpoint: "/api/drinks", method: "POST" });
+        setLogging(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/drinks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          const { is_pr, drink } = await res.json();
+          setSession((s) => {
+            const nextDrinks = s.drinks.map((d) => (d.id === tempId ? drink : d));
+            if (type === "beer") {
+              return {
+                ...s,
+                drinks: nextDrinks,
+                fastestBeerIsPR: Boolean(is_pr),
+                fastestBeerSeconds: drink.duration_seconds ?? s.fastestBeerSeconds,
+              };
+            }
+            return { ...s, drinks: nextDrinks };
+          });
+        }
+      } catch {
+        await enqueue({ type: "LOG_DRINK", payload, endpoint: "/api/drinks", method: "POST" });
+      }
+
+      setLogging(false);
+    },
+    [session.id, logging, enqueue]
+  );
+
+  const handleExtrasUpdate = async (data: {
+    burpCount?: number;
+    washroomCount?: number;
+    chaknaLevel?: "none" | "light" | "heavy";
+  }) => {
+    const updated = {
+      burpCount: data.burpCount ?? session.burpCount,
+      washroomCount: data.washroomCount ?? session.washroomCount,
+      chaknaLevel: data.chaknaLevel ?? session.chaknaLevel,
+    };
+
     setSession((s) => ({ ...s, ...updated }));
-    if (session.id) await fetch(`/api/sessions/${session.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ washroom_count: updated.washroomCount, burp_count: updated.burpCount, chakna_level: updated.chaknaLevel }) });
+
+    if (session.id) {
+      await fetch(`/api/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          washroom_count: updated.washroomCount,
+          burp_count: updated.burpCount,
+          chakna_level: updated.chaknaLevel,
+        }),
+      });
+    }
   };
 
   const endSession = async () => {
     if (!session.id) return;
-    await fetch(`/api/sessions/${session.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ end_time: new Date().toISOString() }) });
+    await fetch(`/api/sessions/${session.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ end_time: new Date().toISOString() }),
+    });
     localStorage.removeItem("dv-active-session");
     router.push(`/morning-card?sessionId=${session.id}`);
   };
@@ -120,13 +217,39 @@ export default function SessionPage() {
   const userImageUrl = user?.imageUrl ?? null;
 
   if (showStart) {
-    return <SessionStartScreen venueInput={venueInput} onVenueChange={setVenueInput} onStart={startSession} starting={starting} userName={userName} userImageUrl={userImageUrl} />;
+    return (
+      <SessionStartScreen
+        venueInput={venueInput}
+        onVenueChange={setVenueInput}
+        onStart={startSession}
+        starting={starting}
+        userName={userName}
+        userImageUrl={userImageUrl}
+      />
+    );
   }
 
   return (
     <>
-      <LiveSessionScreen session={session} onEnd={endSession} onLogDrink={logDrink} onOpenExtras={() => setExtrasOpen(true)} logging={logging} userName={userName} userImageUrl={userImageUrl} queueCount={queueCount} justSynced={justSynced} />
-      <ExtrasSheet open={extrasOpen} onClose={() => setExtrasOpen(false)} burpCount={session.burpCount} washroomCount={session.washroomCount} chaknaLevel={session.chaknaLevel} onUpdate={handleExtrasUpdate} />
+      <LiveSessionScreen
+        session={session}
+        onEnd={endSession}
+        onLogDrink={logDrink}
+        onOpenExtras={() => setExtrasOpen(true)}
+        logging={logging}
+        userName={userName}
+        userImageUrl={userImageUrl}
+        queueCount={queueCount}
+        justSynced={justSynced}
+      />
+      <ExtrasSheet
+        open={extrasOpen}
+        onClose={() => setExtrasOpen(false)}
+        burpCount={session.burpCount}
+        washroomCount={session.washroomCount}
+        chaknaLevel={session.chaknaLevel}
+        onUpdate={handleExtrasUpdate}
+      />
     </>
   );
 }
