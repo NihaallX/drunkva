@@ -114,22 +114,25 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
         }}
       />
 
-      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-0 px-8 text-center">
+      {/* Drinks Block */}
+      <div className="absolute top-[12%] left-0 right-0 flex flex-col items-center">
         <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
+      </div>
 
-        <div className="h-7" />
-
+      {/* Fastest Block */}
+      <div className="absolute top-[32%] left-0 right-0 flex flex-col items-center">
         <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
+      </div>
 
-        {showDuration && (
-          <>
-            <div className="h-7" />
-            <Stat value={duration} label="Time" />
-          </>
-        )}
+      {/* Time Block */}
+      {showDuration && (
+        <div className="absolute top-[52%] left-0 right-0 flex flex-col items-center">
+          <Stat value={duration} label="Time" />
+        </div>
+      )}
 
-        <div className="h-7" />
-
+      {/* Ascend / Graph Block */}
+      <div className="absolute top-[72%] left-0 right-0 flex flex-col items-center">
         <div className="text-[11px] uppercase tracking-[0.12em] text-white font-medium">
           {stage} &middot; {confidence}%
         </div>
@@ -150,9 +153,10 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
             <circle cx={graph.peakX} cy={graph.peakY} r={3.5} fill="var(--primary)" />
           </svg>
         </div>
+      </div>
 
-        <div className="h-3" />
-
+      {/* Logo block */}
+      <div className="absolute bottom-[6%] left-0 right-0 flex justify-center">
         <Image
           src="/drunkva-wordmark-white.png"
           alt="Drunkva"

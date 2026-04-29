@@ -59,20 +59,23 @@ export function TemplateA({ session, drinks, fastestBeerIsPR }: TemplateAProps) 
             "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)",
         }}
       />
-      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-0 px-8 text-center">
+
+      {/* Drinks Block */}
+      <div className="absolute top-[15%] left-0 right-0 flex flex-col items-center">
         <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
-
-        <div className="h-7" />
-
-        <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
-
-        {showDuration && (
-          <>
-            <div className="h-7" />
-            <Stat value={duration} label="Time" />
-          </>
-        )}
       </div>
+
+      {/* Fastest Block */}
+      <div className="absolute top-[38%] left-0 right-0 flex flex-col items-center">
+        <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
+      </div>
+
+      {/* Time Block */}
+      {showDuration && (
+        <div className="absolute top-[61%] left-0 right-0 flex flex-col items-center">
+          <Stat value={duration} label="Time" />
+        </div>
+      )}
     </div>
   );
 }
