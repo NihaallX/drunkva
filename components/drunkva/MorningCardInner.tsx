@@ -84,6 +84,7 @@ export function MorningCardInner() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId");
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const hiddenOverlayRef = useRef<HTMLDivElement | null>(null);
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -163,13 +164,12 @@ export function MorningCardInner() {
   };
 
   const exportAndShare = async () => {
-    if (!overlayRef.current || exporting) return;
+    const target = hiddenOverlayRef.current || overlayRef.current;
+    if (!target || exporting) return;
     setExporting(true);
     try {
-      // Fix #2: dynamic import keeps html2canvas out of the initial bundle.
-      // It will only load when the user taps Share on step 3.
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(overlayRef.current, { scale: 4, useCORS: true, backgroundColor: null, logging: false });
+      const canvas = await html2canvas(target, { scale: 4, useCORS: true, backgroundColor: null, logging: false });
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "drunkva-session.png", { type: "image/png" });
@@ -337,6 +337,29 @@ export function MorningCardInner() {
               overlayRef={overlayRef}
               fastestBeerIsPR={fastestBeerIsPR}
             />
+
+            {/* Hidden absolute 9:16 target for unified export bounds */}
+            <div
+              style={{
+                position: "absolute",
+                left: "-9999px",
+                top: "-9999px",
+                width: "390px",
+                height: "693.33px",
+              }}
+            >
+              <div
+                ref={hiddenOverlayRef}
+                className="relative w-full h-full overflow-hidden"
+                style={{ ...bgStyle }}
+              >
+                {template === "full" ? (
+                  <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                ) : (
+                  <TemplateA session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                )}
+              </div>
+            </div>
 
             {/* Share button */}
             <Button id="export-share-btn" onClick={exportAndShare} disabled={exporting}
