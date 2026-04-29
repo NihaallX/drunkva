@@ -144,12 +144,12 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
           </div>
           <div>
             <Image
-              src="/drunkva-logo.png"
+              src="/drunkva-wordmark-white.png"
               alt="Drunkva"
               width={64}
               height={12}
               className="h-3 w-auto object-contain"
-              style={{ filter: "brightness(0) invert(1)", opacity: 0.4 }}
+              style={{ opacity: 0.4 }}
             />
           </div>
         </div>

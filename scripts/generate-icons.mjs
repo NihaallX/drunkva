@@ -69,6 +69,7 @@ async function makeIcon(wordmark, size, outputPath) {
 
 async function main() {
   const wordmark = await extractWordmark();
+  await wordmark.clone().toFile(path.join(ROOT, "public", "drunkva-wordmark-white.png"));
   await makeIcon(wordmark, 512, path.join(ROOT, "public", "icons", "drunkva-512.png"));
   await makeIcon(wordmark, 192, path.join(ROOT, "public", "icons", "drunkva-192.png"));
   await makeIcon(wordmark, 180, path.join(ROOT, "public", "icons", "apple-touch-icon.png"));
