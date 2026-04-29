@@ -162,7 +162,7 @@ export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps)
           aria-label="Open extras"
           className="w-12 h-12 rounded-full border-border bg-card text-muted-foreground text-xl shrink-0"
         >
-          \u22ef
+          {"\u22ef"}
         </Button>
       </div>
 
