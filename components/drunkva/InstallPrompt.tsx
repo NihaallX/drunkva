@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 import {
   Drawer,
   DrawerContent,
@@ -26,6 +27,8 @@ export function InstallPrompt() {
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
   const [open, setOpen] = useState(false);
 
+  const pathname = usePathname();
+
   useEffect(() => {
     // Count visits — show on 2nd+ visit
     const count = parseInt(localStorage.getItem(VISIT_KEY) ?? "0", 10) + 1;
@@ -36,7 +39,9 @@ export function InstallPrompt() {
       e.preventDefault();
       // Store the event for later — ref survives re-renders
       deferredPromptRef.current = e as BeforeInstallPromptEvent;
-      if (count >= 2) {
+      
+      const isAuthRoute = pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up");
+      if (count >= 2 && !isAuthRoute) {
         setOpen(true);
       }
     };
