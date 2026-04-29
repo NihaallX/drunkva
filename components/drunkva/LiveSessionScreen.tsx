@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Timer } from "lucide-react";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { ConfidenceBlock } from "@/components/drunkva/ConfidenceBlock";
 import { StatGrid } from "@/components/drunkva/StatGrid";
@@ -68,6 +69,37 @@ export function LiveSessionScreen({
     session.drinks,
     session.endTime
   );
+
+  const [isSpeedTiming, setIsSpeedTiming] = useState(false);
+  const [activeSpeedTimer, setActiveSpeedTimer] = useState(0);
+
+  useEffect(() => {
+    if (!isSpeedTiming) return;
+    const interval = setInterval(() => {
+      setActiveSpeedTimer((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isSpeedTiming]);
+
+  const toggleTimer = () => {
+    if (isSpeedTiming) {
+      setIsSpeedTiming(false);
+      setActiveSpeedTimer(0);
+    } else {
+      setIsSpeedTiming(true);
+      setActiveSpeedTimer(0);
+    }
+  };
+
+  const handleLogDrink = (type: string, options?: { manualDurationSeconds?: number }) => {
+    if (isSpeedTiming) {
+      onLogDrink(type, { manualDurationSeconds: activeSpeedTimer });
+      setIsSpeedTiming(false);
+      setActiveSpeedTimer(0);
+    } else {
+      onLogDrink(type, options);
+    }
+  };
 
   const conf = useMemo(() => calculateConfidence(session.drinks), [session.drinks]);
 
@@ -153,6 +185,9 @@ export function LiveSessionScreen({
           liveDurationFormatted={hasLoggedDrink ? formatLiveDuration(activeDuration) : "-"}
           showDurationUnits={hasLoggedDrink}
           washroomCount={session.washroomCount}
+          isSpeedTiming={isSpeedTiming}
+          activeSpeedTimer={activeSpeedTimer}
+          onToggleTimer={toggleTimer}
         />
 
         {isPaused && (
@@ -163,7 +198,14 @@ export function LiveSessionScreen({
 
         <Separator className="bg-border" />
 
-        <QuickLogBar onLog={onLogDrink} onOpenExtras={onOpenExtras} disabled={logging} />
+        {isSpeedTiming && (
+          <div className="bg-primary/20 text-primary border border-primary/30 text-[13px] font-medium text-center py-2.5 rounded-lg dv-animate-up flex items-center justify-center gap-2">
+            <Timer className="size-4 animate-pulse" />
+            Tap a drink to log with this time
+          </div>
+        )}
+
+        <QuickLogBar onLog={handleLogDrink} onOpenExtras={onOpenExtras} disabled={logging} />
       </div>
 
       <BottomNav />

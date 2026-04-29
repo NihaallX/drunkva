@@ -2,6 +2,7 @@
 
 import { Timer } from "lucide-react";
 import { formatDuration } from "@/lib/confidence";
+import { cn } from "@/lib/utils";
 
 interface StatGridProps {
   drinkCount: number;
@@ -12,6 +13,9 @@ interface StatGridProps {
   liveDurationFormatted: string;
   showDurationUnits: boolean;
   washroomCount: number;
+  isSpeedTiming?: boolean;
+  activeSpeedTimer?: number;
+  onToggleTimer?: () => void;
 }
 
 interface StatCellProps {
@@ -39,7 +43,16 @@ export function StatGrid({
   liveDurationFormatted,
   showDurationUnits,
   washroomCount,
+  isSpeedTiming,
+  activeSpeedTimer,
+  onToggleTimer,
 }: StatGridProps) {
+  const formatTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div className="grid grid-cols-2 gap-2">
       <StatCell label="Drinks">
@@ -47,11 +60,33 @@ export function StatGrid({
         <span className="text-[11px] text-muted-foreground font-normal capitalize">{dominantDrink}</span>
       </StatCell>
 
-      <StatCell label="Fastest">
-        {fastestDrinkSeconds != null ? formatDuration(fastestDrinkSeconds) : "-"}
-        {fastestDrinkIsStopwatched && <Timer className="size-3.5 text-muted-foreground" />}
-        {fastestBeerIsPR && dominantDrink === "beer" && <span className="dv-pr-pill">PR</span>}
-      </StatCell>
+      <div
+        className={cn(
+          "dv-surface p-3 cursor-pointer transition-colors relative",
+          isSpeedTiming && "bg-primary/10 border-primary/30"
+        )}
+        onClick={onToggleTimer}
+      >
+        <div className="dv-stat-label flex items-center justify-between">
+          Fastest
+          {isSpeedTiming ? (
+            <div className="size-2.5 rounded-[2px] bg-red-500/90" />
+          ) : (
+            <Timer className="size-3.5 text-muted-foreground opacity-60" />
+          )}
+        </div>
+        <div className={cn("text-lg font-heading font-medium mt-0.5 flex items-baseline gap-1", isSpeedTiming ? "text-primary" : "text-foreground")}>
+          {isSpeedTiming ? (
+            formatTimer(activeSpeedTimer ?? 0)
+          ) : (
+            <>
+              {fastestDrinkSeconds != null ? formatDuration(fastestDrinkSeconds) : "-"}
+              {fastestDrinkIsStopwatched && <Timer className="size-3.5 text-muted-foreground" />}
+              {fastestBeerIsPR && dominantDrink === "beer" && <span className="dv-pr-pill">PR</span>}
+            </>
+          )}
+        </div>
+      </div>
 
       <StatCell label="Duration">
         {liveDurationFormatted}
