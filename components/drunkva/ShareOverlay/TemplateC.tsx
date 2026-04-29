@@ -120,7 +120,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
 
         <div className="h-5" />
 
-        <Stat value={getSessionDuration(session)} label="Active" />
+        <Stat value={getSessionDuration(session)} label="Time" />
 
         <div className="h-7" />
 

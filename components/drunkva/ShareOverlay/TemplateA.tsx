@@ -65,7 +65,7 @@ export function TemplateA({ session, drinks, fastestBeerIsPR }: TemplateAProps) 
 
         <div className="h-5" />
 
-        <Stat value={getSessionDuration(session)} label="Active" />
+        <Stat value={getSessionDuration(session)} label="Time" />
       </div>
     </div>
   );
