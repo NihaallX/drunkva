@@ -2,15 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ImagePlus } from "lucide-react";
 // html2canvas is dynamically imported in exportAndShare to keep it out of the initial bundle.
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Separator } from "@/components/ui/separator";
-import { formatDuration, formatSessionDuration } from "@/lib/confidence";
 import { WitnessSheet } from "@/components/drunkva/WitnessSheet";
+import { TemplateA } from "@/components/drunkva/ShareOverlay/TemplateA";
+import { TemplateC } from "@/components/drunkva/ShareOverlay/TemplateC";
 
 const BG_PRESETS = [
   { id: "dark-blue", style: "linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" },
@@ -20,7 +21,7 @@ const BG_PRESETS = [
 
 type Template = "full" | "minimal";
 
-// ─── Step indicator ────────────────────────────────────────────────────────
+//  Step indicator 
 function StepBar({ step }: { step: number }) {
   return (
     <div className="flex gap-1.5 mb-5">
@@ -37,7 +38,7 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-// ─── Toast notification ─────────────────────────────────────────────────────
+//  Toast notification 
 function Toast({ message, visible }: { message: string; visible: boolean }) {
   return (
     <div
@@ -51,107 +52,33 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
   );
 }
 
-// ─── Share overlay ─────────────────────────────────────────────────────────
+//  Share overlay 
 interface OverlayProps {
   session: any;
   drinks: any[];
-  venueName: string;
-  title: string;
   bgStyle: React.CSSProperties;
   template: Template;
   overlayRef: React.RefObject<HTMLDivElement | null>;
   fastestBeerIsPR?: boolean;
 }
 
-function ShareOverlay({ session, drinks, venueName, title, bgStyle, template, overlayRef, fastestBeerIsPR }: OverlayProps) {
-  const fastestBeer = drinks
-    .filter((d: any) => d.type === "beer" && d.duration_seconds != null)
-    .reduce<number | null>(
-      (min, d: any) => (d.duration_seconds != null && (min == null || d.duration_seconds < min) ? d.duration_seconds : min),
-      null
-    );
-  const duration = session?.end_time
-    ? formatSessionDuration(new Date(session.end_time).getTime() - new Date(session.start_time).getTime())
-    : "—";
-  const initials = session?.real_name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2) ?? "?";
-
+function ShareOverlay({ session, drinks, bgStyle, template, overlayRef, fastestBeerIsPR }: OverlayProps) {
   return (
     <div
       ref={overlayRef}
       className="relative w-full overflow-hidden rounded-xl"
       style={{ aspectRatio: "9/16", ...bgStyle }}
     >
-      {/* Scrim */}
-      <div className="dv-scrim absolute inset-0" />
-
-      {/* Content — bottom anchored */}
-      <div className="absolute left-0 right-0 bottom-0 p-4 pt-20">
-        {template === "full" && (
-          <>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="size-7 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-[10px] font-medium text-white">
-                {initials}
-              </div>
-              <div>
-                <div className="text-xs font-medium text-white">{session?.real_name}</div>
-                {/* venue — bolder, reads like a location tag */}
-                <div className="text-sm font-medium text-white/70">{venueName || session?.venue_name}</div>
-              </div>
-            </div>
-            {title && <p className="text-[11px] text-white/55 italic mb-2 leading-snug">{title}</p>}
-          </>
-        )}
-
-        {/* Stage — always shown */}
-        <div className="dv-stage-xl mb-1">{session?.peak_stage}</div>
-        <div className="text-[13px] text-white/45 mb-2">{session?.peak_confidence_pct}% peak confidence</div>
-
-        {template === "full" && (
-          <>
-            {/* Confidence bar */}
-            <div className="h-[2px] bg-white/12 rounded-full mb-3 overflow-hidden">
-              <div className="h-full bg-primary rounded-full" style={{ width: `${session?.peak_confidence_pct}%` }} />
-            </div>
-
-            {/* 3-stat row */}
-            <Separator className="bg-white/15 mb-3" />
-            <div className="grid grid-cols-3 gap-0 mb-3">
-              <div className="pr-3">
-                <div className="text-[22px] font-medium text-white leading-tight">{drinks.length}</div>
-                <div className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">Drinks</div>
-              </div>
-              <div className="pr-3">
-                <div className="text-[22px] font-medium text-white leading-tight flex items-baseline gap-1">
-                  {fastestBeer != null ? formatDuration(fastestBeer) : "—"}
-                  {fastestBeerIsPR && (
-                    <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-medium">
-                      PR
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">Fastest beer</div>
-              </div>
-              <div>
-                <div className="text-[22px] font-medium text-white leading-tight">{duration}</div>
-                <div className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">Duration</div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Watermark */}
-        <div className="flex justify-between items-center mt-2">
-          <span className="text-[10px] text-white/25">
-            {session?.start_time && new Date(session.start_time).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
-          </span>
-          <span className="text-[10px] text-white/25 tracking-wide">DRUNKVA</span>
-        </div>
-      </div>
+      {template === "full" ? (
+        <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+      ) : (
+        <TemplateA session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+      )}
     </div>
   );
 }
 
-// ─── Main component ────────────────────────────────────────────────────────
+//  Main component 
 export function MorningCardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -190,7 +117,7 @@ export function MorningCardInner() {
         // Check if this session set a PR
         const beerDrinks = (data.drinks ?? []).filter((d: any) => d.type === "beer" && d.duration_seconds != null);
         if (beerDrinks.length > 0) {
-          // We'll compare against session's fastest — the API already stores is_pr per drink
+          // The API already stores is_pr per drink.
           // Use the fastest beer in the session vs profile lifetime min
           // For now, propagate from session flags via drinks
           const hasPR = beerDrinks.some((d: any) => d.is_pr === true);
@@ -221,14 +148,14 @@ export function MorningCardInner() {
       const data = await res.json();
       if (data.error === "generation_failed" || data.title === null) {
         setTitle("");
-        showToast("Couldn't generate a title — write your own?");
+        showToast("Couldn't generate a title - write your own?");
         setTimeout(() => titleInputRef.current?.focus(), 100);
       } else {
         setTitle(data.title ?? "");
       }
     } catch {
       setTitle("");
-      showToast("Couldn't generate a title — write your own?");
+      showToast("Couldn't generate a title - write your own?");
       setTimeout(() => titleInputRef.current?.focus(), 100);
     }
 
@@ -253,7 +180,7 @@ export function MorningCardInner() {
           const a = document.createElement("a");
           a.href = url; a.download = "drunkva-session.png"; a.click();
         }
-        // After share completes — open witness tagging sheet (if not already done)
+        // After share completes, open witness tagging sheet if not already done.
         if (!witnessShared) setWitnessSheetOpen(true);
       }, "image/png");
     } catch {}
@@ -289,7 +216,7 @@ export function MorningCardInner() {
       <div className="px-4 pt-4">
         <StepBar step={step} />
 
-        {/* STEP 1 — Refine */}
+        {/* STEP 1: Refine */}
         {step === 1 && (
           <div className="flex flex-col gap-5">
             <h1 className="text-lg font-semibold text-foreground">Refine your session</h1>
@@ -304,19 +231,19 @@ export function MorningCardInner() {
                   drinks.reduce((acc: Record<string, number>, d: any) => ({ ...acc, [d.type]: (acc[d.type] ?? 0) + 1 }), {})
                 ).map(([type, count]) => (
                   <div key={type} className="dv-surface px-3 py-1.5 text-[13px] text-foreground">
-                    {count as React.ReactNode}× {type}
+                    {count as React.ReactNode}x {type}
                   </div>
                 ))}
               </div>
             </div>
             <Button id="step1-next" onClick={() => { setStep(2); generateTitle(); }}
               className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              Generate title →
+              Generate title -&gt;
             </Button>
           </div>
         )}
 
-        {/* STEP 2 — Title */}
+        {/* STEP 2: Title */}
         {step === 2 && (
           <div className="flex flex-col gap-5">
             <h1 className="text-lg font-semibold text-foreground">Session title</h1>
@@ -330,7 +257,7 @@ export function MorningCardInner() {
             <div className="flex gap-2">
               <Button id="regenerate-title" variant="outline" onClick={generateTitle} disabled={loadingTitle}
                 className="flex-1 border-border text-muted-foreground text-[13px]">
-                {title ? "Regenerate ↻" : "Try again ↻"}
+                {title ? "Regenerate" : "Try again"}
               </Button>
             </div>
             <textarea
@@ -340,17 +267,17 @@ export function MorningCardInner() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               rows={2}
-              placeholder="Write your own title…"
+              placeholder="Write your own title..."
             />
-            {/* Title is NOT required — user can skip with empty title */}
+            {/* Title is not required; user can skip with empty title. */}
             <Button id="step2-next" onClick={() => setStep(3)}
               className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              Choose photo →
+              Choose photo -&gt;
             </Button>
           </div>
         )}
 
-        {/* STEP 3 — Overlay + Share */}
+        {/* STEP 3: Overlay + Share */}
         {step === 3 && (
           <div className="flex flex-col gap-4">
             {/* Template toggle */}
@@ -358,14 +285,13 @@ export function MorningCardInner() {
               className="w-full border border-border rounded-[var(--radius-md)] p-0.5 gap-0">
               <ToggleGroupItem id="template-full" value="full"
                 className="flex-1 h-8 text-xs rounded-[calc(var(--radius-md)-2px)] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                Full story
+                Strava
               </ToggleGroupItem>
               <ToggleGroupItem id="template-minimal" value="minimal"
                 className="flex-1 h-8 text-xs rounded-[calc(var(--radius-md)-2px)] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                Minimal
+                Clean
               </ToggleGroupItem>
             </ToggleGroup>
-
             {/* Background picker */}
             <div className="flex gap-2">
               {BG_PRESETS.map((bg) => (
@@ -384,7 +310,7 @@ export function MorningCardInner() {
                 "size-10 rounded-lg border cursor-pointer flex items-center justify-center text-lg bg-card transition-all",
                 userPhoto ? "border-2 border-primary" : "border-border"
               )}>
-                📷
+                <ImagePlus className="size-4 text-muted-foreground" aria-hidden="true" />
                 <input type="file" accept="image/*" className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -401,8 +327,6 @@ export function MorningCardInner() {
             <ShareOverlay
               session={session}
               drinks={drinks}
-              venueName={venueName}
-              title={title}
               bgStyle={bgStyle}
               template={template}
               overlayRef={overlayRef}
@@ -412,13 +336,13 @@ export function MorningCardInner() {
             {/* Share button */}
             <Button id="export-share-btn" onClick={exportAndShare} disabled={exporting}
               className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              {exporting ? "Exporting…" : "Share 🔗"}
+              {exporting ? "Exporting..." : "Share"}
             </Button>
           </div>
         )}
       </div>
 
-      {/* Witness tagging sheet — appears after share */}
+      {/* Witness tagging sheet appears after share. */}
       {sessionId && (
         <WitnessSheet
           open={witnessSheetOpen}
@@ -427,7 +351,7 @@ export function MorningCardInner() {
           onDone={(count) => {
             setWitnessSheetOpen(false);
             setWitnessShared(true);
-            if (count > 0) showToast(`Tagged ${count} witness${count > 1 ? "es" : ""} 👁️`);
+            if (count > 0) showToast(`Tagged ${count} witness${count > 1 ? "es" : ""}`);
           }}
         />
       )}
