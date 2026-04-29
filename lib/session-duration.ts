@@ -24,15 +24,25 @@ export function calculateTotalDurationSeconds(startTime: string, endTime: string
 }
 
 export function calculateActiveDurationSeconds(
+  startTime: string,
   drinks: SessionDrinkTime[],
   endTime: string
 ): number | null {
-  const sortedDrinkTimes = sortDrinkTimesMs(drinks);
+  const startMs = toTimestampMs(startTime);
   const endMs = toTimestampMs(endTime);
+  if (startMs == null || endMs == null) return null;
 
-  if (sortedDrinkTimes.length === 0 || endMs == null) return null;
-
+  const sortedDrinkTimes = sortDrinkTimesMs(drinks);
   let activeSeconds = 0;
+
+  if (sortedDrinkTimes.length === 0) {
+    const totalGap = Math.max(0, Math.floor((endMs - startMs) / 1000));
+    return Math.min(totalGap, ACTIVE_GAP_CAP_SECONDS);
+  }
+
+  const firstGap = Math.max(0, Math.floor((sortedDrinkTimes[0] - startMs) / 1000));
+  activeSeconds += Math.min(firstGap, ACTIVE_GAP_CAP_SECONDS);
+
   for (let i = 1; i < sortedDrinkTimes.length; i++) {
     const gapSeconds = Math.max(0, Math.floor((sortedDrinkTimes[i] - sortedDrinkTimes[i - 1]) / 1000));
     activeSeconds += Math.min(gapSeconds, ACTIVE_GAP_CAP_SECONDS);
@@ -45,16 +55,30 @@ export function calculateActiveDurationSeconds(
   return activeSeconds;
 }
 
-export function calculateLiveActiveDuration(drinks: SessionDrinkTime[], nowMs: number): {
+export function calculateLiveActiveDuration(
+  startTime: string | null,
+  drinks: SessionDrinkTime[],
+  nowMs: number
+): {
   activeDuration: number;
   isPaused: boolean;
 } {
+  if (!startTime) return { activeDuration: 0, isPaused: false };
+  const startMs = toTimestampMs(startTime);
+  if (startMs == null) return { activeDuration: 0, isPaused: false };
+
   const sortedDrinkTimes = sortDrinkTimesMs(drinks);
+  let activeSeconds = 0;
+
   if (sortedDrinkTimes.length === 0) {
-    return { activeDuration: 0, isPaused: false };
+    const totalGap = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+    const paused = totalGap >= ACTIVE_GAP_CAP_SECONDS;
+    return { activeDuration: Math.min(totalGap, ACTIVE_GAP_CAP_SECONDS), isPaused: paused };
   }
 
-  let activeSeconds = 0;
+  const firstGap = Math.max(0, Math.floor((sortedDrinkTimes[0] - startMs) / 1000));
+  activeSeconds += Math.min(firstGap, ACTIVE_GAP_CAP_SECONDS);
+
   for (let i = 1; i < sortedDrinkTimes.length; i++) {
     const gapSeconds = Math.max(0, Math.floor((sortedDrinkTimes[i] - sortedDrinkTimes[i - 1]) / 1000));
     activeSeconds += Math.min(gapSeconds, ACTIVE_GAP_CAP_SECONDS);

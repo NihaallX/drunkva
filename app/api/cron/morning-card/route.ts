@@ -108,7 +108,7 @@ export async function GET(req: Request) {
     `) as SessionDrinkTime[];
 
     const totalDurationSeconds = calculateTotalDurationSeconds(session.start_time, endTime);
-    const activeDurationSeconds = calculateActiveDurationSeconds(drinks, endTime);
+    const activeDurationSeconds = calculateActiveDurationSeconds(session.start_time, drinks, endTime);
 
     await sql`
       UPDATE sessions
@@ -151,7 +151,7 @@ export async function GET(req: Request) {
     `) as SessionDrinkTime[];
 
     const totalDurationSeconds = calculateTotalDurationSeconds(session.start_time, endTime);
-    const activeDurationSeconds = calculateActiveDurationSeconds(drinks, endTime);
+    const activeDurationSeconds = calculateActiveDurationSeconds(session.start_time, drinks, endTime);
 
     await sql`
       UPDATE sessions

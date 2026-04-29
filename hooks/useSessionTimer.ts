@@ -10,7 +10,7 @@ export function useSessionTimer(
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (!startTime || drinks.length === 0) {
+    if (!startTime) {
       setActiveDuration(0);
       setIsPaused(false);
       return;
@@ -18,12 +18,12 @@ export function useSessionTimer(
 
     const tick = () => {
       if (endTime) {
-        setActiveDuration(calculateActiveDurationSeconds(drinks, endTime) ?? 0);
+        setActiveDuration(calculateActiveDurationSeconds(startTime, drinks, endTime) ?? 0);
         setIsPaused(false);
         return;
       }
 
-      const live = calculateLiveActiveDuration(drinks, Date.now());
+      const live = calculateLiveActiveDuration(startTime, drinks, Date.now());
       setActiveDuration(live.activeDuration);
       setIsPaused(live.isPaused);
     };

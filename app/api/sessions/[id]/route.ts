@@ -97,7 +97,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     `) as SessionDrinkTime[];
 
     totalDurationSeconds = calculateTotalDurationSeconds(existing.start_time, resolvedEndTime);
-    activeDurationSeconds = calculateActiveDurationSeconds(drinks, resolvedEndTime);
+    activeDurationSeconds = calculateActiveDurationSeconds(existing.start_time, drinks, resolvedEndTime);
   }
 
   const [session] = await sql`
