@@ -130,7 +130,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
 
         <div className="h-7" />
 
-        <div className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+        <div className="text-[11px] uppercase tracking-[0.12em] text-white font-medium">
           {stage} &middot; {confidence}%
         </div>
 
@@ -138,12 +138,12 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
 
         <div className="w-[128px]">
           <svg width="128" height="48" viewBox="0 0 128 48" preserveAspectRatio="none" aria-hidden="true">
-            <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.2} />
+            <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.4} />
             <polyline
               points={graph.points}
               fill="none"
               stroke="var(--primary)"
-              strokeWidth={2}
+              strokeWidth={3}
               strokeLinejoin="round"
               strokeLinecap="round"
             />
