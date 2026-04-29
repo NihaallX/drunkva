@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Timer } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { ConfidenceBlock } from "@/components/drunkva/ConfidenceBlock";
 import { StatGrid } from "@/components/drunkva/StatGrid";
@@ -64,6 +65,7 @@ export function LiveSessionScreen({
   queueCount,
   justSynced,
 }: LiveSessionScreenProps) {
+  const router = useRouter();
   const { activeDuration, isPaused, hasLoggedDrink } = useSessionTimer(
     session.startTime,
     session.drinks,
@@ -127,7 +129,10 @@ export function LiveSessionScreen({
         <DrunkvaLogo />
         <div className="flex items-center gap-2">
           <Badge className="dv-live-badge">LIVE</Badge>
-          <Avatar className="size-7">
+          <Avatar
+            className="size-7 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => router.push("/profile/edit")}
+          >
             {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
             <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
               {getInitials(userName)}

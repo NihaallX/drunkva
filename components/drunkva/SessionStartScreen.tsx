@@ -5,6 +5,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/drunkva/BottomNav";
 
+import { useRouter } from "next/navigation";
+
 function getInitials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
@@ -26,11 +28,16 @@ export function SessionStartScreen({
   userName,
   userImageUrl,
 }: SessionStartScreenProps) {
+  const router = useRouter();
+
   return (
     <div className="dv-page flex flex-col">
       <div className="dv-nav flex items-center justify-between px-4 py-3">
         <DrunkvaLogo />
-        <Avatar className="size-7">
+        <Avatar
+          className="size-7 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => router.push("/profile/edit")}
+        >
           {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
           <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
             {getInitials(userName)}

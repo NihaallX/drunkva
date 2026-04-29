@@ -123,7 +123,10 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-5 p-4">
           {/* Avatar + name */}
           <div className="flex items-center gap-3.5">
-            <Avatar className="size-14 text-xl">
+            <Avatar
+              className="size-14 text-xl cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => router.push("/profile/edit")}
+            >
               {profile.user.avatar_url && (
                 <AvatarImage src={profile.user.avatar_url} alt={profile.user.real_name} />
               )}
