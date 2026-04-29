@@ -9,6 +9,7 @@ interface StatGridProps {
   fastestBeerSeconds: number | null;
   fastestBeerIsPR: boolean;
   liveDurationFormatted: string;
+  showDurationUnits: boolean;
   washroomCount: number;
 }
 
@@ -34,6 +35,7 @@ export function StatGrid({
   fastestBeerSeconds,
   fastestBeerIsPR,
   liveDurationFormatted,
+  showDurationUnits,
   washroomCount,
 }: StatGridProps) {
   return (
@@ -52,7 +54,7 @@ export function StatGrid({
 
       <StatCell label="Duration">
         {liveDurationFormatted}
-        <span className="text-[11px] text-muted-foreground font-normal">hrs</span>
+        {showDurationUnits && <span className="text-[11px] text-muted-foreground font-normal">hrs</span>}
       </StatCell>
 
       <StatCell label="Washroom">

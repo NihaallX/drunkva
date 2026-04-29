@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, formatLiveDuration } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDuration, formatSessionDuration } from "@/lib/confidence";
+import { formatDuration } from "@/lib/confidence";
 import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
 import { useUser as useClerkUser } from "@clerk/nextjs";
 
@@ -39,6 +39,8 @@ interface SessionDetail {
   session_title: string | null;
   peak_confidence_pct: number;
   peak_stage: string;
+  total_duration_seconds: number | null;
+  active_duration_seconds: number | null;
   washroom_count: number;
   burp_count: number;
   chakna_level: string;
@@ -65,17 +67,21 @@ interface WitnessRecord {
 }
 
 const DRINK_EMOJIS: Record<string, string> = {
-  beer: "🍺", shot: "🥃", wine: "🍷", cocktail: "🍹", spirit: "🥂",
+  beer: "\u{1F37A}",
+  shot: "\u{1F943}",
+  wine: "\u{1F377}",
+  cocktail: "\u{1F379}",
+  spirit: "\u{1F942}",
 };
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// Sub-components
 
-interface StatCardProps { label: string; value: string; highlight?: boolean; }
-function StatCard({ label, value, highlight }: StatCardProps) {
+interface StatCardProps { label: string; value: string; highlight?: boolean; subtitle?: string; }
+function StatCard({ label, value, highlight, subtitle }: StatCardProps) {
   return (
     <Card className="bg-card border-border py-0 gap-0">
       <CardContent className="px-3 py-2.5">
@@ -83,6 +89,7 @@ function StatCard({ label, value, highlight }: StatCardProps) {
         <div className={cn("text-base font-medium mt-0.5", highlight ? "text-primary" : "text-foreground")}>
           {value}
         </div>
+        {subtitle && <div className="mt-1 text-[11px] text-muted-foreground">{subtitle}</div>}
       </CardContent>
     </Card>
   );
@@ -94,7 +101,7 @@ function DrinkRow({ drink, isLast }: DrinkRowProps) {
     <>
       <div className="flex items-center justify-between py-2.5">
         <div className="flex items-center gap-2.5">
-          <span className="text-xl">{DRINK_EMOJIS[drink.type] ?? "🍹"}</span>
+          <span className="text-xl">{DRINK_EMOJIS[drink.type] ?? "\u{1F379}"}</span>
           <div>
             <div className="text-[13px] font-medium text-foreground capitalize">{drink.type}</div>
             <div className="text-[11px] text-muted-foreground">
@@ -111,7 +118,7 @@ function DrinkRow({ drink, isLast }: DrinkRowProps) {
   );
 }
 
-// ─── Witness Banner ────────────────────────────────────────────────────────────
+// Witness Banner
 interface WitnessBannerProps {
   sessionId: string;
   taggerName: string;
@@ -139,7 +146,7 @@ function WitnessBanner({ sessionId, taggerName, peakStage, onRespond }: WitnessB
         "mx-4 mb-3 px-4 py-3 rounded-[var(--radius-md)] text-[13px] font-medium text-center",
         choice ? "bg-primary/10 text-primary border border-primary/20" : "bg-muted text-muted-foreground"
       )}>
-        {choice ? "✓ You confirmed this session" : "Declined"}
+        {choice ? "You confirmed this session" : "Declined"}
       </div>
     );
   }
@@ -168,14 +175,14 @@ function WitnessBanner({ sessionId, taggerName, peakStage, onRespond }: WitnessB
           className="flex-1 bg-primary text-primary-foreground active:bg-primary/90"
           onClick={() => respond(true)}
         >
-          Confirm ✓
+          Confirm {"\u2713"}
         </Button>
       </div>
     </div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Page
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -218,9 +225,15 @@ export default function SessionDetailPage() {
 
   const confirmedCount = witnesses.filter((w) => w.confirmed).length;
 
-  const duration = session.end_time
-    ? formatSessionDuration(new Date(session.end_time).getTime() - new Date(session.start_time).getTime())
+  const activeDuration = session.active_duration_seconds != null
+    ? formatLiveDuration(session.active_duration_seconds)
     : null;
+  const totalDurationSeconds = session.total_duration_seconds ?? (
+    session.end_time
+      ? Math.max(0, Math.floor((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / 1000))
+      : null
+  );
+  const totalDuration = totalDurationSeconds != null ? formatLiveDuration(totalDurationSeconds) : null;
   const fastestBeer = drinks
     .filter((d) => d.type === "beer" && d.duration_seconds != null)
     .reduce<number | null>(
@@ -228,12 +241,16 @@ export default function SessionDetailPage() {
       null
     );
 
-  const stats = [
+  const stats: StatCardProps[] = [
     { label: "Peak stage", value: session.peak_stage, highlight: true },
     { label: "Peak confidence", value: `${session.peak_confidence_pct}%` },
     { label: "Drinks", value: String(drinks.length) },
-    { label: "Duration", value: duration ?? "—" },
-    { label: "Fastest beer", value: fastestBeer != null ? formatDuration(fastestBeer) : "—" },
+    {
+      label: "Active drinking time",
+      value: activeDuration ?? "\u2014",
+      subtitle: `Total time out: ${totalDuration ?? "\u2014"}`,
+    },
+    { label: "Fastest beer", value: fastestBeer != null ? formatDuration(fastestBeer) : "\u2014" },
     { label: "Cheers", value: String(cheers_count) },
     { label: "Washroom", value: `${session.washroom_count} trips` },
     { label: "Chakna", value: session.chakna_level ?? "none" },
@@ -251,7 +268,7 @@ export default function SessionDetailPage() {
         <DrunkvaLogo />
       </div>
 
-      {/* Witness confirmation banner — only shown to tagged users */}
+      {/* Witness confirmation banner - only shown to tagged users */}
       {isWitnessTagged && (
         <WitnessBanner
           sessionId={session.id}
@@ -266,7 +283,7 @@ export default function SessionDetailPage() {
           {/* Session header */}
           <div>
             <div className="text-[13px] text-muted-foreground mb-1">
-              {session.venue_name ?? "Session"} ·{" "}
+              {session.venue_name ?? "Session"} -{" "}
               {new Date(session.start_time).toLocaleDateString("en-IN", {
                 weekday: "short", month: "short", day: "numeric",
               })}
@@ -275,7 +292,7 @@ export default function SessionDetailPage() {
               <span className="text-[11px] text-muted-foreground">by {session.real_name}</span>
               {session.is_verified && (
                 <span className="flex items-center gap-1 text-[10px] text-primary font-medium">
-                  <span className="w-3.5 h-3.5 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                  <span className="w-3.5 h-3.5 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">{"\u2713"}</span>
                   Verified by {confirmedCount} witnesses
                 </span>
               )}
@@ -288,11 +305,11 @@ export default function SessionDetailPage() {
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-2">
             {stats.map((s) => (
-              <StatCard key={s.label} label={s.label} value={s.value} highlight={s.highlight} />
+              <StatCard key={s.label} label={s.label} value={s.value} highlight={s.highlight} subtitle={s.subtitle} />
             ))}
           </div>
 
-          {/* Witness list — shown if any confirmed */}
+          {/* Witness list - shown if any confirmed */}
           {confirmedCount > 0 && (
             <Card className="bg-card border-border py-0 gap-0">
               <CardContent className="px-3 py-3.5">

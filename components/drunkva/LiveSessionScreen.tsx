@@ -59,7 +59,11 @@ export function LiveSessionScreen({
   queueCount,
   justSynced,
 }: LiveSessionScreenProps) {
-  const elapsedSeconds = useSessionTimer(session.startTime, session.endTime);
+  const { activeDuration, isPaused, hasLoggedDrink } = useSessionTimer(
+    session.startTime,
+    session.drinks,
+    session.endTime
+  );
 
   // Fix #1 — Memoize confidence calc so it only reruns when drinks change,
   // not on every timer tick from StatGrid's useElapsed.
@@ -153,9 +157,15 @@ export function LiveSessionScreen({
           dominantDrink={dominantDrink}
           fastestBeerSeconds={session.fastestBeerSeconds}
           fastestBeerIsPR={session.fastestBeerIsPR}
-          liveDurationFormatted={formatLiveDuration(elapsedSeconds)}
+          liveDurationFormatted={hasLoggedDrink ? formatLiveDuration(activeDuration) : "—"}
+          showDurationUnits={hasLoggedDrink}
           washroomCount={session.washroomCount}
         />
+        {isPaused && (
+          <div className="inline-flex w-fit items-center rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+            Paused — log a drink to resume
+          </div>
+        )}
 
         <Separator className="bg-border" />
 

@@ -1,27 +1,43 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from "react";
+import { calculateActiveDurationSeconds, calculateLiveActiveDuration, type SessionDrinkTime } from "@/lib/session-duration";
 
-export function useSessionTimer(startTime: string | null, endTime: string | null = null) {
-  const [elapsed, setElapsed] = useState(0)
+export function useSessionTimer(
+  startTime: string | null,
+  drinks: SessionDrinkTime[],
+  endTime: string | null = null
+) {
+  const [activeDuration, setActiveDuration] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (!startTime) return
-
-    const start = new Date(startTime).getTime()
-    
-    // If the session has ended, show the final static duration
-    if (endTime) {
-      setElapsed(Math.floor((new Date(endTime).getTime() - start) / 1000))
-      return
+    if (!startTime || drinks.length === 0) {
+      setActiveDuration(0);
+      setIsPaused(false);
+      return;
     }
 
     const tick = () => {
-      setElapsed(Math.floor((Date.now() - start) / 1000))
-    }
+      if (endTime) {
+        setActiveDuration(calculateActiveDurationSeconds(drinks, endTime) ?? 0);
+        setIsPaused(false);
+        return;
+      }
 
-    tick() // immediate first tick
-    const interval = setInterval(tick, 1000)
-    return () => clearInterval(interval)
-  }, [startTime, endTime])
+      const live = calculateLiveActiveDuration(drinks, Date.now());
+      setActiveDuration(live.activeDuration);
+      setIsPaused(live.isPaused);
+    };
 
-  return elapsed // total seconds
+    tick();
+    if (endTime) return;
+
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [startTime, drinks, endTime]);
+
+  return {
+    activeDuration,
+    isPaused,
+    hasLoggedDrink: drinks.length > 0,
+  };
 }

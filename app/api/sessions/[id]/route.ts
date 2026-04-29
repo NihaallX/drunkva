@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth";
 import sql from "@/lib/db";
+import { calculateActiveDurationSeconds, calculateTotalDurationSeconds, type SessionDrinkTime } from "@/lib/session-duration";
 
 // GET /api/sessions/[id] — full session + drinks (public — no auth required for viewing)
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -43,17 +44,54 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const user = await getOrCreateUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const { end_time, session_title, venue_name, washroom_count, burp_count, chakna_level } = body;
+
+  const [existing] = await sql`
+    SELECT id, start_time
+    FROM sessions
+    WHERE id = ${id} AND user_id = ${user.id}
+  `;
+  if (!existing) return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 });
+
+  let resolvedEndTime: string | null = null;
+  let totalDurationSeconds: number | null = null;
+  let activeDurationSeconds: number | null = null;
+
+  if (typeof end_time === "string" && end_time.trim().length > 0) {
+    const endMs = new Date(end_time).getTime();
+    if (!Number.isFinite(endMs)) {
+      return NextResponse.json({ error: "Invalid end_time" }, { status: 400 });
+    }
+
+    resolvedEndTime = new Date(endMs).toISOString();
+    const drinks = (await sql`
+      SELECT logged_at
+      FROM drinks
+      WHERE session_id = ${id}
+      ORDER BY logged_at ASC
+    `) as SessionDrinkTime[];
+
+    totalDurationSeconds = calculateTotalDurationSeconds(existing.start_time, resolvedEndTime);
+    activeDurationSeconds = calculateActiveDurationSeconds(drinks, resolvedEndTime);
+  }
 
   const [session] = await sql`
     UPDATE sessions SET
-      end_time = COALESCE(${end_time ?? null}, end_time),
+      end_time = COALESCE(${resolvedEndTime}, end_time),
       session_title = COALESCE(${session_title ?? null}, session_title),
       venue_name = COALESCE(${venue_name ?? null}, venue_name),
       washroom_count = COALESCE(${washroom_count ?? null}, washroom_count),
       burp_count = COALESCE(${burp_count ?? null}, burp_count),
-      chakna_level = COALESCE(${chakna_level ?? null}, chakna_level)
+      chakna_level = COALESCE(${chakna_level ?? null}, chakna_level),
+      total_duration_seconds = CASE
+        WHEN ${resolvedEndTime} IS NOT NULL THEN ${totalDurationSeconds}
+        ELSE total_duration_seconds
+      END,
+      active_duration_seconds = CASE
+        WHEN ${resolvedEndTime} IS NOT NULL THEN ${activeDurationSeconds}
+        ELSE active_duration_seconds
+      END
     WHERE id = ${id} AND user_id = ${user.id}
     RETURNING *
   `;

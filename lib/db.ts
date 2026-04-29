@@ -22,6 +22,8 @@ export interface DbSession {
   location_lng: number | null;
   start_time: string;
   end_time: string | null;
+  total_duration_seconds: number | null;
+  active_duration_seconds: number | null;
   session_title: string | null;
   peak_confidence_pct: number;
   peak_stage: string;

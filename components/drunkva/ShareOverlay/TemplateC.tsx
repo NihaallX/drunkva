@@ -135,7 +135,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
           <div className="w-px self-stretch bg-white/[0.25]" />
           <Stat value={getFastestBeerLabel(drinks)} label="FASTEST" showPR={fastestBeerIsPR} />
           <div className="w-px self-stretch bg-white/[0.25]" />
-          <Stat value={getSessionDuration(session)} label="DURATION" />
+          <Stat value={getSessionDuration(session)} label="ACTIVE" />
         </div>
 
         <div className="flex h-[26px] items-center justify-between border-t border-white/[0.08] px-3">

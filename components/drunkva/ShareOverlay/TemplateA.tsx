@@ -59,7 +59,7 @@ export function TemplateA({ session, drinks, fastestBeerIsPR }: TemplateAProps) 
           <div className="w-px self-stretch bg-white/[0.25]" />
           <Stat value={getFastestBeerLabel(drinks)} label="FASTEST" showPR={fastestBeerIsPR} />
           <div className="w-px self-stretch bg-white/[0.25]" />
-          <Stat value={getSessionDuration(session)} label="DURATION" />
+          <Stat value={getSessionDuration(session)} label="ACTIVE" />
         </div>
         <div className="dv-overlay-text absolute bottom-2 right-4 flex items-center gap-1.5 text-[9px] font-medium leading-none tracking-[0.1em] text-white/[0.35]">
           <DrunkvaMark size={12} />

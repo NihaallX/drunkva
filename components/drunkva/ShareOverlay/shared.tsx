@@ -1,8 +1,11 @@
-import { formatDuration, formatSessionDuration } from "@/lib/confidence";
+import { formatDuration } from "@/lib/confidence";
+import { formatLiveDuration } from "@/lib/utils";
 
 export interface ShareOverlaySession {
   start_time: string;
   end_time?: string | null;
+  active_duration_seconds?: number | null;
+  total_duration_seconds?: number | null;
   peak_stage?: string | null;
   peak_confidence_pct?: number | null;
   dominantDrink?: string | null;
@@ -28,9 +31,8 @@ export function getFastestBeer(drinks: ShareOverlayDrink[]): number | null {
 }
 
 export function getSessionDuration(session: ShareOverlaySession): string {
-  if (!session.end_time) return "-";
-
-  return formatSessionDuration(new Date(session.end_time).getTime() - new Date(session.start_time).getTime());
+  if (session.active_duration_seconds == null) return "—";
+  return formatLiveDuration(session.active_duration_seconds);
 }
 
 function pluralizeDrinkType(type: string): string {
@@ -61,7 +63,7 @@ export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: Sha
 
 export function getFastestBeerLabel(drinks: ShareOverlayDrink[]): string {
   const fastestBeer = getFastestBeer(drinks);
-  return fastestBeer != null ? formatDuration(fastestBeer) : "-";
+  return fastestBeer != null ? formatDuration(fastestBeer) : "—";
 }
 
 export function DrunkvaMark({ size = 14 }: { size?: number }) {
