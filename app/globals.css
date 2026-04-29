@@ -116,7 +116,12 @@
 
   body {
     @apply text-foreground antialiased;
-    font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+    font-family: var(--font-sans, "Inter", system-ui, sans-serif),
+      'Apple Color Emoji',
+      'Segoe UI Emoji', 
+      'Segoe UI Symbol',
+      'Noto Color Emoji',
+      sans-serif;
     background: transparent; /* Centering shell owns bg */
     color: var(--text-primary);
     /* Fix #8: overflow-x: hidden removed — any horizontal overflow is clipped
@@ -214,6 +219,12 @@
   color: var(--text-secondary);
   font-style: italic;
   line-height: 1.4;
+}
+
+.dv-drink-icon {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .dv-overlay-text {

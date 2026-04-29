@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 
 const QUICK_TYPES = [
-  { type: "shot", emoji: "\u{1F943}", label: "Shot" },
-  { type: "wine", emoji: "\u{1F377}", label: "Wine" },
-  { type: "beer", emoji: "\u{1F37A}", label: "Beer" },
-  { type: "cocktail", emoji: "\u{1F379}", label: "Cocktail" },
-  { type: "spirit", emoji: "\u{1F942}", label: "Spirit" },
+  { type: "shot", emoji: "🥃", label: "Shot" },
+  { type: "wine", emoji: "🍷", label: "Wine" },
+  { type: "beer", emoji: "🍺", label: "Beer" },
+  { type: "cocktail", emoji: "🍹", label: "Cocktail" },
+  { type: "spirit", emoji: "🥂", label: "Spirit" },
 ] as const;
 
 const MIN_REALISTIC_SECONDS = 10;
@@ -66,7 +66,7 @@ function DrinkButton({
         popped && "dv-pop"
       )}
     >
-      {emoji}
+      <span className="dv-drink-icon">{emoji}</span>
     </button>
   );
 }
@@ -111,7 +111,7 @@ export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps)
       <div className="flex items-center justify-between gap-2 px-1" role="group" aria-label="Quick drink log">
         <DrinkButton
           id="log-shot"
-          emoji="\u{1F943}"
+          emoji="🥃"
           label="Shot"
           onClick={() => onLog("shot")}
           disabled={disabled}
@@ -119,7 +119,7 @@ export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps)
 
         <DrinkButton
           id="log-wine"
-          emoji="\u{1F377}"
+          emoji="🍷"
           label="Wine"
           onClick={() => onLog("wine")}
           disabled={disabled}
@@ -127,7 +127,7 @@ export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps)
 
         <DrinkButton
           id="log-beer-main"
-          emoji="\u{1F37A}"
+          emoji="🍺"
           label="Beer"
           onClick={() => onLog("beer")}
           disabled={disabled}
@@ -136,7 +136,7 @@ export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps)
 
         <DrinkButton
           id="log-cocktail"
-          emoji="\u{1F379}"
+          emoji="🍹"
           label="Cocktail"
           onClick={() => onLog("cocktail")}
           disabled={disabled}
@@ -162,7 +162,7 @@ export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps)
           aria-label="Open extras"
           className="w-12 h-12 rounded-full border-border bg-card text-muted-foreground text-xl shrink-0"
         >
-          {"\u22ef"}
+          ···
         </Button>
       </div>
 
@@ -194,7 +194,7 @@ export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps)
                       : "border-border bg-transparent text-muted-foreground"
                   )}
                 >
-                  <div className="text-lg leading-none">{drink.emoji}</div>
+                  <div className="text-lg leading-none dv-drink-icon">{drink.emoji}</div>
                   <div className="mt-1 text-[10px] uppercase tracking-wide">{drink.label}</div>
                 </button>
               ))}

@@ -70,11 +70,11 @@ interface WitnessRecord {
 }
 
 const DRINK_EMOJIS: Record<string, string> = {
-  beer: "\u{1F37A}",
-  shot: "\u{1F943}",
-  wine: "\u{1F377}",
-  cocktail: "\u{1F379}",
-  spirit: "\u{1F942}",
+  beer: "🍺",
+  shot: "🥃",
+  wine: "🍷",
+  cocktail: "🍹",
+  spirit: "🥂",
 };
 
 function getInitials(name: string) {
@@ -104,7 +104,7 @@ function DrinkRow({ drink, isLast }: DrinkRowProps) {
     <>
       <div className="flex items-center justify-between py-2.5">
         <div className="flex items-center gap-2.5">
-          <span className="text-xl">{DRINK_EMOJIS[drink.type] ?? "\u{1F379}"}</span>
+          <span className="text-xl dv-drink-icon">{DRINK_EMOJIS[drink.type] ?? "🍹"}</span>
           <div>
             <div className="text-[13px] font-medium text-foreground capitalize">{drink.type}</div>
             <div className="text-[11px] text-muted-foreground">
