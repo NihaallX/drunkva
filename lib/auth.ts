@@ -53,3 +53,20 @@ export async function getOrCreateUser(): Promise<DbUser | null> {
 
   return created as DbUser;
 }
+
+export async function requireOnboarding(): Promise<DbUser> {
+  const { redirect } = await import("next/navigation");
+  const user = await getOrCreateUser();
+  
+  if (!user) {
+    redirect("/sign-in");
+    throw new Error("Unauthorized");
+  }
+  
+  if (!user.is_onboarded) {
+    redirect("/onboarding");
+    throw new Error("Onboarding required");
+  }
+  
+  return user;
+}

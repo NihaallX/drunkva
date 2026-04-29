@@ -151,4 +151,11 @@ await sql`
 `;
 console.log('Added indexes for PR lookup and session cutoff');
 
+// 9. Add is_onboarded column to users
+await sql`
+  ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS is_onboarded BOOLEAN DEFAULT FALSE
+`;
+console.log('Added is_onboarded to users');
+
 console.log('All migrations complete');

@@ -74,7 +74,8 @@ export async function PATCH(req: Request) {
   const [updated] = await sql`
     UPDATE users SET
       real_name = ${real_name.trim()},
-      alias = ${alias?.trim() ?? null}
+      alias = ${alias?.trim() ?? null},
+      is_onboarded = TRUE
     WHERE id = ${user.id}
     RETURNING *
   `;
