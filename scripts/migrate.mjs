@@ -158,4 +158,14 @@ await sql`
 `;
 console.log('Added is_onboarded to users');
 
+// 10. Add account_deletions table
+await sql`
+  CREATE TABLE IF NOT EXISTS account_deletions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reason TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )
+`;
+console.log('Created account_deletions table');
+
 console.log('All migrations complete');

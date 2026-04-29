@@ -5,7 +5,16 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LogOut, Trash2 } from "lucide-react";
+import { clerkEnabled } from "@/lib/mock-user";
+import { useClerk as useClerkHook } from "@clerk/nextjs";
+
+let useClerk: () => any;
+if (clerkEnabled) {
+  useClerk = useClerkHook;
+} else {
+  useClerk = () => ({ signOut: async () => { window.location.href = "/sign-in"; } });
+}
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -13,6 +22,11 @@ export default function EditProfilePage() {
   const [alias, setAlias] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const { signOut } = useClerk();
 
   useEffect(() => {
     fetch("/api/profile")
@@ -44,6 +58,30 @@ export default function EditProfilePage() {
       setError("Something went wrong. Try again.");
     }
     setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteReason) {
+      alert("Please select a reason for leaving.");
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: deleteReason }),
+      });
+      if (res.ok) {
+        await signOut();
+      } else {
+        alert("Failed to delete account. Try again.");
+      }
+    } catch (e) {
+      alert("An error occurred.");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -110,7 +148,88 @@ export default function EditProfilePage() {
         >
           {saving ? "Saving..." : "Save changes"}
         </Button>
+
+        {/* Separator */}
+        <div className="h-px bg-border my-2" />
+
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-2">
+          <Button
+            id="logout-btn"
+            variant="outline"
+            onClick={() => signOut()}
+            className="border-border text-foreground h-12 text-[15px] flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </Button>
+
+          <Button
+            id="delete-prompt-btn"
+            variant="ghost"
+            onClick={() => setIsDeleting(true)}
+            className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 h-10 text-xs flex items-center justify-center gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+            <span>Delete Account</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Delete Survey Modal */}
+      {isDeleting && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-5">
+          <div className="bg-card border border-border w-full max-w-sm rounded-xl p-5 shadow-lg flex flex-col gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Why are you leaving?</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Help us understand where we can improve.</p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {[
+                "I don't drink anymore",
+                "Privacy / data concerns",
+                "App felt too complex / clunky",
+                "Wiping records for a clean restart",
+                "Other",
+              ].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => setDeleteReason(reason)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-md text-xs border transition-colors duration-150 cursor-pointer",
+                    deleteReason === reason
+                      ? "bg-primary/10 border-primary text-primary font-medium"
+                      : "bg-transparent border-border text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2.5 mt-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-10 text-xs"
+                onClick={() => { setIsDeleting(false); setDeleteReason(""); }}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 h-10 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDelete}
+                disabled={deleteLoading || !deleteReason}
+              >
+                {deleteLoading ? "Deleting..." : "Permanently Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

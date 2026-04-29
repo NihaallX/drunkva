@@ -82,3 +82,40 @@ export async function PATCH(req: Request) {
 
   return NextResponse.json({ user: updated });
 }
+
+export async function DELETE(req: Request) {
+  const user = await getOrCreateUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const { reason } = body;
+
+  try {
+    // 1. Delete follows
+    await sql`DELETE FROM follows WHERE follower_id = ${user.id} OR following_id = ${user.id}`;
+
+    // 2. Delete cheers
+    await sql`DELETE FROM cheers WHERE from_user_id = ${user.id} OR session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
+
+    // 3. Delete witnesses
+    await sql`DELETE FROM session_witnesses WHERE user_id = ${user.id} OR session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
+
+    // 4. Delete drinks
+    await sql`DELETE FROM drinks WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
+
+    // 5. Delete sessions
+    await sql`DELETE FROM sessions WHERE user_id = ${user.id}`;
+
+    // 6. Delete user
+    await sql`DELETE FROM users WHERE id = ${user.id}`;
+
+    // 7. Store survey reason decoupled
+    if (reason && reason.trim()) {
+      await sql`INSERT INTO account_deletions (reason) VALUES (${reason.trim()})`;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
