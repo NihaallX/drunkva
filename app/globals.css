@@ -337,6 +337,25 @@
   box-shadow: 0 4px 20px rgba(232, 98, 26, 0.35);
 }
 
+.dv-drink-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--font-sans);
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-align: center;
+}
+
+.dv-drink-btn:active + .dv-drink-label,
+.dv-drink-btn.dv-pop + .dv-drink-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dv-drink-btn--main + .dv-drink-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
 /* Photo overlay scrim */
 .dv-scrim {
   background: linear-gradient(
