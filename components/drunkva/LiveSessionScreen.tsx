@@ -118,6 +118,14 @@ export function LiveSessionScreen({
     return Object.entries(drinkCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "beer";
   }, [session.drinks]);
 
+  const dominantDrinkLabel = useMemo(() => {
+    const types = Array.from(new Set(session.drinks.map((d) => d.type.toLowerCase())));
+    if (types.length > 1) {
+      return "mixed";
+    }
+    return dominantDrink;
+  }, [session.drinks, dominantDrink]);
+
   const fastestDrink = useMemo(
     () => getPreferredFastestDrink(session.drinks, dominantDrink),
     [session.drinks, dominantDrink]
@@ -183,7 +191,7 @@ export function LiveSessionScreen({
 
         <StatGrid
           drinkCount={session.drinks.length}
-          dominantDrink={dominantDrink}
+          dominantDrink={dominantDrinkLabel}
           fastestDrinkSeconds={fastestDrink?.duration_seconds ?? null}
           fastestDrinkIsStopwatched={fastestDrink?.timing_method === "stopwatch"}
           fastestBeerIsPR={session.fastestBeerIsPR}
