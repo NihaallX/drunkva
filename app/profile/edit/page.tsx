@@ -5,54 +5,12 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
-
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-// --- Checkbox --------------------------------------------------------------
-function AgreementCheckbox({ agreed, onToggle }: { agreed: boolean; onToggle: () => void }) {
-  return (
-    <div className="flex items-start gap-3 text-left">
-      <button
-        id="tos-agree"
-        type="button"
-        onClick={onToggle}
-        className="mt-0.5 size-5 shrink-0 rounded-[4px] flex items-center justify-center transition-all duration-150 bg-transparent border border-border cursor-pointer p-0"
-        aria-pressed={agreed}
-      >
-        {agreed && (
-          <svg
-            viewBox="0 0 16 16"
-            aria-hidden="true"
-            className="size-3.5 text-primary-foreground bg-primary rounded-[3px]"
-          >
-            <path
-              d="M4 8.5l2.2 2.2L12 5.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-      </button>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        I verify that I am of legal drinking age. I acknowledge that Drunkva metrics are for entertainment purposes only. I have read and agree to the{" "}
-        <Link href="/terms" className="text-primary hover:underline font-medium">Terms of Service</Link> and{" "}
-        <Link href="/privacy" className="text-primary hover:underline font-medium">Privacy Policy</Link>.{" "}
-        <span className="text-destructive font-semibold">Never drink and drive.</span>
-      </p>
-    </div>
-  );
-}
-
-// --- Page ------------------------------------------------------------------
-export default function OnboardingPage() {
+export default function EditProfilePage() {
   const router = useRouter();
   const [realName, setRealName] = useState("");
   const [alias, setAlias] = useState("");
-  const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -61,16 +19,18 @@ export default function OnboardingPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data?.user) {
-          if (data.user.real_name && !realName) setRealName(data.user.real_name);
-          if (data.user.alias && !alias) setAlias(data.user.alias);
+          if (data.user.real_name) setRealName(data.user.real_name);
+          if (data.user.alias) setAlias(data.user.alias);
         }
       })
       .catch(() => {});
   }, []);
 
   const handleSubmit = async () => {
-    if (!realName.trim()) { setError("Name is required"); return; }
-    if (!agreed) { setError("Please accept the terms"); return; }
+    if (!realName.trim()) {
+      setError("Name is required");
+      return;
+    }
     setSaving(true);
     setError("");
     const res = await fetch("/api/profile", {
@@ -79,7 +39,7 @@ export default function OnboardingPage() {
       body: JSON.stringify({ real_name: realName.trim(), alias: alias.trim() || null }),
     });
     if (res.ok) {
-      router.push("/session");
+      router.push("/profile");
     } else {
       setError("Something went wrong. Try again.");
     }
@@ -88,6 +48,14 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-dvh bg-background flex flex-col px-5 relative">
+      <button
+        onClick={() => router.back()}
+        className="absolute left-5 top-8 text-muted-foreground hover:text-foreground transition-colors p-2 bg-transparent border-0 cursor-pointer"
+        aria-label="Go back"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
+
       {/* Logo */}
       <div className="flex justify-center py-10">
         <DrunkvaLogo />
@@ -95,14 +63,14 @@ export default function OnboardingPage() {
 
       <div className="flex-1 flex flex-col gap-5 max-w-sm mx-auto w-full">
         <div>
-          <h1 className="text-[22px] font-semibold text-foreground mb-1.5">Set up your profile</h1>
-          <p className="text-sm text-muted-foreground">You only do this once.</p>
+          <h1 className="text-[22px] font-semibold text-foreground mb-1.5">Edit profile</h1>
+          <p className="text-sm text-muted-foreground">Update your details.</p>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="real-name" className="dv-stat-label">Your name *</label>
+          <label htmlFor="edit-real-name" className="dv-stat-label">Your name *</label>
           <input
-            id="real-name"
+            id="edit-real-name"
             className="dv-input"
             placeholder="John Doe"
             value={realName}
@@ -112,7 +80,7 @@ export default function OnboardingPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="alias" className="dv-stat-label">
+          <label htmlFor="edit-alias" className="dv-stat-label">
             Alias <span className="text-muted-foreground/60 font-normal normal-case">(optional)</span>
           </label>
           <div className="relative">
@@ -123,7 +91,7 @@ export default function OnboardingPage() {
               @
             </span>
             <input
-              id="alias"
+              id="edit-alias"
               className={cn("dv-input", "dv-input-prefix")}
               placeholder="johnsigma"
               value={alias}
@@ -132,17 +100,15 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        <AgreementCheckbox agreed={agreed} onToggle={() => setAgreed(!agreed)} />
-
         {error && <p className="text-[13px] text-destructive">{error}</p>}
 
         <Button
-          id="onboarding-submit"
+          id="edit-profile-submit"
           onClick={handleSubmit}
           disabled={saving}
           className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-[15px] font-medium"
         >
-          {saving ? "Saving..." : "Let's go"}
+          {saving ? "Saving..." : "Save changes"}
         </Button>
       </div>
     </div>

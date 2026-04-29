@@ -106,7 +106,7 @@ export default function ProfilePage() {
           id="settings-btn"
           variant="ghost"
           size="icon-sm"
-          onClick={() => router.push("/onboarding")}
+          onClick={() => router.push("/profile/edit")}
           aria-label="Settings"
           className="text-muted-foreground"
         >
