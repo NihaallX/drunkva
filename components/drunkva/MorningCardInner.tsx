@@ -169,7 +169,7 @@ export function MorningCardInner() {
       // Fix #2: dynamic import keeps html2canvas out of the initial bundle.
       // It will only load when the user taps Share on step 3.
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(overlayRef.current, { scale: 3, useCORS: true, backgroundColor: null, logging: false });
+      const canvas = await html2canvas(overlayRef.current, { scale: 4, useCORS: true, backgroundColor: null, logging: false });
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "drunkva-session.png", { type: "image/png" });

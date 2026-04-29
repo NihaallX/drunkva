@@ -37,7 +37,7 @@ function Stat({
           </span>
         )}
       </div>
-      <div className="dv-overlay-label">{label}</div>
+      <div className="dv-overlay-label mt-1.5">{label}</div>
     </div>
   );
 }
