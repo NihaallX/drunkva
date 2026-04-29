@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import {
-  DrunkvaMark,
   getDominantDrinkLabel,
   getFastestBeerLabel,
   getSessionDuration,
@@ -61,9 +61,15 @@ export function TemplateA({ session, drinks, fastestBeerIsPR }: TemplateAProps) 
           <div className="w-px self-stretch bg-white/[0.25]" />
           <Stat value={getSessionDuration(session)} label="ACTIVE" />
         </div>
-        <div className="dv-overlay-text absolute bottom-2 right-4 flex items-center gap-1.5 text-[9px] font-medium leading-none tracking-[0.1em] text-white/[0.35]">
-          <DrunkvaMark size={12} />
-          <span>DRUNKVA</span>
+        <div className="absolute bottom-2 right-4">
+          <Image
+            src="/drunkva-logo.png"
+            alt="Drunkva"
+            width={64}
+            height={12}
+            className="h-3 w-auto object-contain"
+            style={{ filter: "brightness(0) invert(1)", opacity: 0.4 }}
+          />
         </div>
       </div>
     </>

@@ -12,12 +12,6 @@ export default function manifest() {
     categories: ["lifestyle", "social"],
     icons: [
       {
-        src: "/drunkva-logo.png",
-        sizes: "any",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
         src: "/icons/drunkva-192.png",
         sizes: "192x192",
         type: "image/png",
@@ -27,7 +21,13 @@ export default function manifest() {
         src: "/icons/drunkva-512.png",
         sizes: "512x512",
         type: "image/png",
-        purpose: "maskable",
+        purpose: "any maskable",
+      },
+      {
+        src: "/icons/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+        purpose: "any",
       },
     ],
   };

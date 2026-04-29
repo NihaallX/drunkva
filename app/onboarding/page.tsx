@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 const TOS = `Drunkva is a personal tracking and entertainment tool. We do not promote or encourage alcohol consumption. Users are solely responsible for their own choices. By signing up you confirm you are of legal drinking age in your jurisdiction.`;
 
-// ─── Checkbox ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Checkbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AgreementCheckbox({ agreed, onToggle }: { agreed: boolean; onToggle: () => void }) {
   return (
     <button
@@ -24,14 +24,14 @@ function AgreementCheckbox({ agreed, onToggle }: { agreed: boolean; onToggle: ()
           agreed ? "bg-primary" : "border border-border bg-transparent"
         )}
       >
-        {agreed && <span className="text-primary-foreground text-xs font-bold">✓</span>}
+        {agreed && <span className="text-primary-foreground text-xs font-bold">âœ“</span>}
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{TOS}</p>
     </button>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function OnboardingPage() {
   const router = useRouter();
   const [realName, setRealName] = useState("");
@@ -62,7 +62,7 @@ export default function OnboardingPage() {
     <div className="min-h-dvh bg-background flex flex-col px-5">
       {/* Logo */}
       <div className="flex justify-center py-10">
-        <DrunkvaLogo size={32} />
+        <DrunkvaLogo />
       </div>
 
       <div className="flex-1 flex flex-col gap-5 max-w-sm mx-auto w-full">
@@ -109,7 +109,7 @@ export default function OnboardingPage() {
           disabled={saving}
           className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-[15px] font-medium"
         >
-          {saving ? "Saving…" : "Let's go 🍺"}
+          {saving ? "Savingâ€¦" : "Let's go ðŸº"}
         </Button>
       </div>
     </div>

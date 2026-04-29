@@ -31,7 +31,7 @@ export function getFastestBeer(drinks: ShareOverlayDrink[]): number | null {
 }
 
 export function getSessionDuration(session: ShareOverlaySession): string {
-  if (session.active_duration_seconds == null) return "—";
+  if (session.active_duration_seconds == null) return "â€”";
   return formatLiveDuration(session.active_duration_seconds);
 }
 
@@ -63,15 +63,5 @@ export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: Sha
 
 export function getFastestBeerLabel(drinks: ShareOverlayDrink[]): string {
   const fastestBeer = getFastestBeer(drinks);
-  return fastestBeer != null ? formatDuration(fastestBeer) : "—";
-}
-
-export function DrunkvaMark({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 22 22" fill="none" aria-hidden="true" className="shrink-0">
-      <polygon points="11,14 2,18 11,6" fill="#C44D0E" opacity="0.85" />
-      <polygon points="11,2 20,18 11,14 2,18" fill="var(--primary)" />
-      <polygon points="11,8 16,16 11,14 6,16" fill="#C44D0E" opacity="0.5" />
-    </svg>
-  );
+  return fastestBeer != null ? formatDuration(fastestBeer) : "â€”";
 }

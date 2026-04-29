@@ -1,21 +1,12 @@
 import { SignUp } from "@clerk/nextjs";
+import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 
 export default function SignUpPage() {
   return (
     // Fix #4: outer container uses Tailwind classes instead of inline style={{}}
     <div className="min-h-dvh bg-background flex flex-col items-center justify-center px-5 gap-8">
       <div className="flex flex-col items-center gap-3">
-        <svg width="48" height="48" viewBox="0 0 22 22" fill="none">
-          <polygon points="11,14 2,18 11,6" fill="#C44D0E" opacity="0.85" />
-          <polygon points="11,2 20,18 11,14 2,18" fill="var(--primary)" />
-          <polygon points="11,8 16,16 11,14 6,16" fill="#C44D0E" opacity="0.5" />
-        </svg>
-        <span
-          className="font-semibold text-primary tracking-widest"
-          style={{ fontSize: 22 }}
-        >
-          DRUNKVA
-        </span>
+        <DrunkvaLogo />
         <p className="text-[13px] text-muted-foreground text-center leading-relaxed max-w-[260px]">
           Every night has a story. Start tracking yours.
         </p>

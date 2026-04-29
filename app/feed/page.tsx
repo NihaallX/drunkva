@@ -77,7 +77,7 @@ export default function FeedPage() {
   const [refreshing, setRefreshing] = useState(false);
   const fetchingRef = useRef(false);
 
-  // Intersection observer — sentinel at bottom of list
+  // Intersection observer â€” sentinel at bottom of list
   const { ref: sentinelRef, inView } = useInView({ threshold: 0 });
 
   const loadFeed = useCallback(async (pageNum: number, replace = false) => {
@@ -100,7 +100,7 @@ export default function FeedPage() {
   // Initial load
   useEffect(() => { loadFeed(0, true); }, [loadFeed]);
 
-  // Infinite scroll — fire when sentinel enters viewport
+  // Infinite scroll â€” fire when sentinel enters viewport
   useEffect(() => {
     if (inView && hasMore && !loading && !loadingMore) {
       const next = page + 1;
@@ -118,7 +118,7 @@ export default function FeedPage() {
     loadFeed(0, true);
   };
 
-  // Cheers polling — refetch cheers counts every 30s when tab is visible
+  // Cheers polling â€” refetch cheers counts every 30s when tab is visible
   const refetchCheers = useCallback(async () => {
     if (document.visibilityState !== "visible" || feed.length === 0) return;
     try {
@@ -167,7 +167,7 @@ export default function FeedPage() {
               <path d="M9 3l3-3-3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Button>
-          <DrunkvaLogo showWordmark={false} size={20} />
+          <DrunkvaLogo />
         </div>
       </div>
 
@@ -177,7 +177,7 @@ export default function FeedPage() {
           <FeedSkeleton />
         ) : feed.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <span className="text-4xl">🍺</span>
+            <span className="text-4xl">ðŸº</span>
             <div className="text-[15px] font-medium text-foreground">No sessions yet</div>
             <div className="text-[13px] text-muted-foreground text-center px-8">
               Follow friends to see their sessions here
@@ -203,7 +203,7 @@ export default function FeedPage() {
             <div ref={sentinelRef} className="h-1" />
             {loadingMore && <LoadingSpinner />}
             {!hasMore && feed.length > 0 && (
-              <p className="text-center text-[12px] text-muted-foreground py-6">You're all caught up 🍺</p>
+              <p className="text-center text-[12px] text-muted-foreground py-6">You're all caught up ðŸº</p>
             )}
           </>
         )}

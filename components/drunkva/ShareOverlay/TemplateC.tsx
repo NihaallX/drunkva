@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
+import Image from "next/image";
 import { reconstructCurve } from "@/lib/confidence";
 import {
-  DrunkvaMark,
   getDominantDrinkLabel,
   getFastestBeerLabel,
   getSessionDuration,
@@ -142,13 +142,18 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
           <div className="dv-overlay-text font-sans text-[10px] leading-none text-white/50">
             {stage} &middot; {confidence}%
           </div>
-          <div className="dv-overlay-text flex items-center gap-1.5 text-[9px] font-medium leading-none tracking-[0.1em] text-white/[0.35]">
-            <DrunkvaMark size={12} />
-            <span>DRUNKVA</span>
+          <div>
+            <Image
+              src="/drunkva-logo.png"
+              alt="Drunkva"
+              width={64}
+              height={12}
+              className="h-3 w-auto object-contain"
+              style={{ filter: "brightness(0) invert(1)", opacity: 0.4 }}
+            />
           </div>
         </div>
       </div>
     </>
   );
 }
-
