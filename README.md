@@ -64,6 +64,11 @@ Drunkva is a mobile-first, social session tracker for your nights out. You log d
 * 🔔 Push notifications for morning cards and witness tagging
 * 💡 Custom native-feeling install prompt on second visit
 
+**Identity & Security**
+* 🔐 Mandatory onboarding gateway enforcing legal terms & privacy compliance
+* 🚪 Secure Clerk sign-out controls and comprehensive account deletion pathways
+* 📊 Decoupled post-exit survey trend analyses mapping product enhancements
+
 **Tech Highlights**
 * Implemented strict hydration mismatch fixes for native dark-mode (`color-scheme: dark`)
 * Uses Vercel Cron (`/api/cron/morning-card`) for automated 10 AM notifications
