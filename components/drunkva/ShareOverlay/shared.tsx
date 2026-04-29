@@ -1,5 +1,4 @@
 import { formatDuration } from "@/lib/confidence";
-import { formatLiveDuration } from "@/lib/utils";
 import { getPreferredFastestDrink, type TimingMethod } from "@/lib/drink-speed";
 
 export interface ShareOverlaySession {
@@ -20,9 +19,19 @@ export interface ShareOverlayDrink {
   timing_method?: TimingMethod;
 }
 
+export function formatOverlayDuration(seconds: number | null | undefined): string {
+  if (seconds == null) return "-";
+
+  const totalSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainderSeconds = totalSeconds % 60;
+
+  return `${minutes}m ${remainderSeconds.toString().padStart(2, "0")}s`;
+}
+
 export function getSessionDuration(session: ShareOverlaySession): string {
   if (session.active_duration_seconds == null) return "-";
-  return formatLiveDuration(session.active_duration_seconds);
+  return formatOverlayDuration(session.active_duration_seconds);
 }
 
 function pluralizeDrinkType(type: string): string {
@@ -57,19 +66,17 @@ export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: Sha
 
 export function getFastestStat(drinks: ShareOverlayDrink[], session?: ShareOverlaySession): {
   value: string;
-  label: string;
   isStopwatch: boolean;
 } {
-  const dominantType = getDominantDrinkType(drinks, session);
-  const fastest = getPreferredFastestDrink(drinks, dominantType);
+  void session;
+  const fastest = getPreferredFastestDrink(drinks, "beer");
 
   if (!fastest || fastest.duration_seconds == null) {
-    return { value: "-", label: "FASTEST", isStopwatch: false };
+    return { value: "-", isStopwatch: false };
   }
 
   return {
     value: formatDuration(fastest.duration_seconds),
-    label: `FASTEST ${dominantType.toUpperCase()}`,
     isStopwatch: fastest.timing_method === "stopwatch",
   };
 }

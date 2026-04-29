@@ -220,6 +220,34 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
+.dv-overlay-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-sans);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.dv-overlay-number {
+  font-size: 52px;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.dv-overlay-unit {
+  font-size: 20px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0;
+}
+
 /* Confidence progress bar */
 .dv-bar-track {
   height: 6px;

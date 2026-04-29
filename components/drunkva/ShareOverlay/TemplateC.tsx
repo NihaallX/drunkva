@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { Timer } from "lucide-react";
 import { reconstructCurve } from "@/lib/confidence";
 import {
   getDominantDrinkLabel,
@@ -18,9 +17,10 @@ interface TemplateCProps {
 }
 
 const CARD_WIDTH = 390;
-const GRAPH_HEIGHT = 36;
+const ARC_WIDTH = 128;
+const ARC_HEIGHT = 48;
 
-function buildGraph(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
+function buildArc(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
   const curve = reconstructCurve(drinks, session.start_time);
   const sessionStart = new Date(session.start_time).getTime();
   const fallbackEnd = curve[curve.length - 1]?.time ?? 1;
@@ -28,11 +28,11 @@ function buildGraph(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
   const duration = Math.max(1, sessionEnd - sessionStart);
 
   if (drinks.length === 0 || curve.length === 0) {
-    const y = GRAPH_HEIGHT - (10 / 99) * GRAPH_HEIGHT;
-    const points = `0,${y} ${CARD_WIDTH},${y}`;
+    const y = ARC_HEIGHT - (10 / 99) * 40;
+    const points = `0,${y} ${ARC_WIDTH},${y}`;
     return {
       points,
-      areaPoints: `0,${GRAPH_HEIGHT} ${points} ${CARD_WIDTH},${GRAPH_HEIGHT}`,
+      areaPoints: `0,${ARC_HEIGHT} ${points} ${ARC_WIDTH},${ARC_HEIGHT}`,
       peakX: 0,
       peakY: y,
     };
@@ -40,19 +40,19 @@ function buildGraph(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
 
   if (drinks.length === 1) {
     const confidence = curve[curve.length - 1]?.confidence ?? session.peak_confidence_pct ?? 10;
-    const y = GRAPH_HEIGHT - (confidence / 99) * GRAPH_HEIGHT;
-    const points = `0,${y} ${CARD_WIDTH},${y}`;
+    const y = ARC_HEIGHT - (confidence / 99) * 40;
+    const points = `0,${y} ${ARC_WIDTH},${y}`;
     return {
       points,
-      areaPoints: `0,${GRAPH_HEIGHT} ${points} ${CARD_WIDTH},${GRAPH_HEIGHT}`,
-      peakX: CARD_WIDTH / 2,
+      areaPoints: `0,${ARC_HEIGHT} ${points} ${ARC_WIDTH},${ARC_HEIGHT}`,
+      peakX: ARC_WIDTH / 2,
       peakY: y,
     };
   }
 
   const graphPoints = curve.map((point) => {
-    const x = Math.max(0, Math.min(CARD_WIDTH, (point.time / duration) * CARD_WIDTH));
-    const y = GRAPH_HEIGHT - (point.confidence / 99) * GRAPH_HEIGHT;
+    const x = Math.max(0, Math.min(ARC_WIDTH, (point.time / duration) * ARC_WIDTH));
+    const y = ARC_HEIGHT - (point.confidence / 99) * 40;
     return { x, y, confidence: point.confidence };
   });
   const points = graphPoints.map((point) => `${point.x},${point.y}`).join(" ");
@@ -60,7 +60,7 @@ function buildGraph(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
 
   return {
     points,
-    areaPoints: `0,${GRAPH_HEIGHT} ${points} ${CARD_WIDTH},${GRAPH_HEIGHT}`,
+    areaPoints: `0,${ARC_HEIGHT} ${points} ${ARC_WIDTH},${ARC_HEIGHT}`,
     peakX: peakPoint.x,
     peakY: peakPoint.y,
   };
@@ -69,101 +69,93 @@ function buildGraph(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
 function Stat({
   value,
   label,
+  unit,
   showPR,
-  showStopwatch,
 }: {
   value: string | number;
   label: string;
+  unit?: string;
   showPR?: boolean;
-  showStopwatch?: boolean;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 basis-0 flex-col items-center justify-center text-center">
-      <div className="relative inline-flex min-w-[76px] items-end justify-center gap-1">
-        <span className="dv-overlay-text font-heading text-[32px] font-medium leading-none tracking-[-0.02em] text-white">
-          {value}
-        </span>
-        {showStopwatch && <Timer className="mb-1 size-3 text-white/60" />}
+    <div className="flex flex-col items-center text-center">
+      <div className="flex items-end justify-center gap-2">
+        <span className="dv-overlay-number">{value}</span>
+        {unit && <span className="dv-overlay-unit pb-1">{unit}</span>}
         {showPR && (
-          <span className="mb-1 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-medium leading-none text-white">
+          <span className="mb-2 rounded-full bg-primary px-2 py-1 text-[10px] font-medium leading-none text-white">
             PR
           </span>
         )}
       </div>
-      <div className="dv-overlay-text mt-1 font-sans text-[10px] uppercase tracking-[0.08em] text-white/[0.45]">
-        {label}
-      </div>
+      <div className="dv-overlay-label">{label}</div>
     </div>
   );
 }
 
 export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) {
-  const graph = buildGraph(session, drinks);
+  const graph = buildArc(session, drinks);
   const stage = session.peak_stage ?? "Baseline";
   const confidence = Math.round(session.peak_confidence_pct ?? 10);
   const fastestStat = getFastestStat(drinks, session);
+  const dominantDrink = getDominantDrinkLabel(drinks, session).toLowerCase();
 
   return (
-    <>
+    <div className="absolute inset-0 text-white">
       <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0"
+        className="pointer-events-none absolute top-0 left-0 right-0"
         style={{
-          height: "50%",
-          background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
+          height: "55%",
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)",
         }}
       />
-      <div className="absolute inset-x-0 bottom-0 h-[120px] bg-transparent">
-        <svg
-          width="100%"
-          height={GRAPH_HEIGHT}
-          viewBox={`0 0 ${CARD_WIDTH} ${GRAPH_HEIGHT}`}
-          preserveAspectRatio="none"
-          className="block"
-          aria-hidden="true"
-        >
-          <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.15} />
-          <polyline
-            points={graph.points}
-            fill="none"
-            stroke="var(--primary)"
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-            strokeLinecap="butt"
-          />
-          <circle cx={graph.peakX} cy={graph.peakY} r={3} fill="var(--primary)" />
-        </svg>
 
-        <div className="h-2.5" />
+      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-0 px-8 text-center">
+        <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
 
-        <div className="flex h-12 w-full items-center">
-          <Stat value={drinks.length} label={getDominantDrinkLabel(drinks, session)} />
-          <div className="w-px self-stretch bg-white/[0.25]" />
-          <Stat
-            value={fastestStat.value}
-            label={fastestStat.label}
-            showPR={fastestBeerIsPR && fastestStat.label.includes("BEER")}
-            showStopwatch={fastestStat.isStopwatch}
-          />
-          <div className="w-px self-stretch bg-white/[0.25]" />
-          <Stat value={getSessionDuration(session)} label="ACTIVE" />
+        <div className="h-5" />
+
+        <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
+
+        <div className="h-5" />
+
+        <Stat value={getSessionDuration(session)} label="Active" />
+
+        <div className="h-7" />
+
+        <div className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+          {stage} &middot; {confidence}%
         </div>
 
-        <div className="flex h-[26px] items-center justify-between border-t border-white/[0.08] px-3">
-          <div className="dv-overlay-text font-sans text-[10px] leading-none text-white/50">
-            {stage} &middot; {confidence}%
-          </div>
-          <div>
-            <Image
-              src="/drunkva-wordmark-white.png"
-              alt="Drunkva"
-              width={64}
-              height={12}
-              className="h-3 w-auto object-contain"
-              style={{ opacity: 0.4 }}
+        <div className="h-3" />
+
+        <div className="w-[128px]">
+          <svg width="128" height="48" viewBox="0 0 128 48" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.2} />
+            <polyline
+              points={graph.points}
+              fill="none"
+              stroke="var(--primary)"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
             />
-          </div>
+            <circle cx={graph.peakX} cy={graph.peakY} r={3.5} fill="var(--primary)" />
+          </svg>
         </div>
+
+        <div className="h-3" />
+
+        <Image
+          src="/drunkva-wordmark-white.png"
+          alt="Drunkva"
+          width={80}
+          height={16}
+          className="h-4 w-auto object-contain opacity-70"
+          style={{ filter: "brightness(0) invert(1)" }}
+        />
       </div>
-    </>
+    </div>
   );
 }
