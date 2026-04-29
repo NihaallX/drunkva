@@ -102,18 +102,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const [session] = await sql`
     UPDATE sessions SET
-      end_time = COALESCE(${resolvedEndTime}, end_time),
-      session_title = COALESCE(${session_title ?? null}, session_title),
-      venue_name = COALESCE(${venue_name ?? null}, venue_name),
-      washroom_count = COALESCE(${washroom_count ?? null}, washroom_count),
-      burp_count = COALESCE(${burp_count ?? null}, burp_count),
-      chakna_level = COALESCE(${chakna_level ?? null}, chakna_level),
+      end_time = COALESCE(${resolvedEndTime}::timestamp, end_time),
+      session_title = COALESCE(${session_title ?? null}::text, session_title),
+      venue_name = COALESCE(${venue_name ?? null}::text, venue_name),
+      washroom_count = COALESCE(${washroom_count ?? null}::integer, washroom_count),
+      burp_count = COALESCE(${burp_count ?? null}::integer, burp_count),
+      chakna_level = COALESCE(${chakna_level ?? null}::text, chakna_level),
       total_duration_seconds = CASE
-        WHEN ${resolvedEndTime} IS NOT NULL THEN ${totalDurationSeconds}
+        WHEN ${resolvedEndTime}::text IS NOT NULL THEN ${totalDurationSeconds}::integer
         ELSE total_duration_seconds
       END,
       active_duration_seconds = CASE
-        WHEN ${resolvedEndTime} IS NOT NULL THEN ${activeDurationSeconds}
+        WHEN ${resolvedEndTime}::text IS NOT NULL THEN ${activeDurationSeconds}::integer
         ELSE active_duration_seconds
       END
     WHERE id = ${id} AND user_id = ${user.id}
