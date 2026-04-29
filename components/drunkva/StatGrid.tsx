@@ -90,7 +90,6 @@ export function StatGrid({
 
       <StatCell label="Duration">
         {liveDurationFormatted}
-        {showDurationUnits && <span className="text-[11px] text-muted-foreground font-normal">hrs</span>}
       </StatCell>
 
       <StatCell label="Washroom">
