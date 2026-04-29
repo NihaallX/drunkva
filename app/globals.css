@@ -401,6 +401,10 @@
   border-color: var(--border-brand);
 }
 
+.dv-input-prefix {
+  padding-left: 28px;
+}
+
 /* Cheers button */
 .dv-cheers-btn {
   display: flex;

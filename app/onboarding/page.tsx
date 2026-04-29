@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 const TOS = `Drunkva is a personal tracking and entertainment tool. We do not promote or encourage alcohol consumption. Users are solely responsible for their own choices. By signing up you confirm you are of legal drinking age in your jurisdiction.`;
 
-// â”€â”€â”€ Checkbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Checkbox --------------------------------------------------------------
 function AgreementCheckbox({ agreed, onToggle }: { agreed: boolean; onToggle: () => void }) {
   return (
     <button
@@ -24,14 +24,29 @@ function AgreementCheckbox({ agreed, onToggle }: { agreed: boolean; onToggle: ()
           agreed ? "bg-primary" : "border border-border bg-transparent"
         )}
       >
-        {agreed && <span className="text-primary-foreground text-xs font-bold">âœ“</span>}
+        {agreed && (
+          <svg
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            className="size-3.5 text-primary-foreground"
+          >
+            <path
+              d="M4 8.5l2.2 2.2L12 5.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{TOS}</p>
     </button>
   );
 }
 
-// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Page ------------------------------------------------------------------
 export default function OnboardingPage() {
   const router = useRouter();
   const [realName, setRealName] = useState("");
@@ -76,7 +91,7 @@ export default function OnboardingPage() {
           <input
             id="real-name"
             className="dv-input"
-            placeholder="Nihal Kapoor"
+            placeholder="John Doe"
             value={realName}
             onChange={(e) => setRealName(e.target.value)}
             autoFocus
@@ -88,11 +103,16 @@ export default function OnboardingPage() {
             Alias <span className="text-muted-foreground/60 font-normal normal-case">(optional)</span>
           </label>
           <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[15px]">@</span>
+            <span
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[15px] pointer-events-none select-none"
+              aria-hidden="true"
+            >
+              @
+            </span>
             <input
               id="alias"
-              className={cn("dv-input", "pl-7")}
-              placeholder="nk_official"
+              className={cn("dv-input", "dv-input-prefix")}
+              placeholder="johnsigma"
               value={alias}
               onChange={(e) => setAlias(e.target.value.replace(/\s/g, "").toLowerCase())}
             />
@@ -109,7 +129,7 @@ export default function OnboardingPage() {
           disabled={saving}
           className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-[15px] font-medium"
         >
-          {saving ? "Savingâ€¦" : "Let's go ðŸº"}
+          {saving ? "Saving..." : "Let's go"}
         </Button>
       </div>
     </div>
