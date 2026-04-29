@@ -61,6 +61,10 @@ export function getDominantDrinkType(drinks: ShareOverlayDrink[], session?: Shar
 }
 
 export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: ShareOverlaySession): string {
+  const types = Array.from(new Set(drinks.map((d) => d.type.toLowerCase())));
+  if (types.length > 1) {
+    return "MIXED";
+  }
   return pluralizeDrinkType(getDominantDrinkType(drinks, session));
 }
 
