@@ -60,15 +60,25 @@ interface OverlayProps {
   template: Template;
   overlayRef: React.RefObject<HTMLDivElement | null>;
   fastestBeerIsPR?: boolean;
+  userPhoto?: string | null;
 }
 
-function ShareOverlay({ session, drinks, bgStyle, template, overlayRef, fastestBeerIsPR }: OverlayProps) {
+function ShareOverlay({ session, drinks, bgStyle, template, overlayRef, fastestBeerIsPR, userPhoto }: OverlayProps) {
+  const finalBgStyle = userPhoto ? {} : bgStyle;
+  
   return (
     <div
       ref={overlayRef}
-      className="relative w-full overflow-hidden rounded-xl"
-      style={{ aspectRatio: "9/16", ...bgStyle }}
+      className="relative w-full overflow-hidden rounded-xl bg-black"
+      style={{ aspectRatio: "9/16", ...finalBgStyle }}
     >
+      {userPhoto && (
+        <img 
+          src={userPhoto} 
+          alt="Background" 
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
       {template === "full" ? (
         <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
       ) : (
@@ -336,6 +346,7 @@ export function MorningCardInner() {
               template={template}
               overlayRef={overlayRef}
               fastestBeerIsPR={fastestBeerIsPR}
+              userPhoto={userPhoto}
             />
 
             {/* Hidden absolute 9:16 target for unified export bounds */}
@@ -350,9 +361,16 @@ export function MorningCardInner() {
             >
               <div
                 ref={hiddenOverlayRef}
-                className="relative w-full h-full overflow-hidden"
-                style={{ ...bgStyle }}
+                className="relative w-full h-full overflow-hidden bg-black"
+                style={userPhoto ? {} : bgStyle}
               >
+                {userPhoto && (
+                  <img 
+                    src={userPhoto} 
+                    alt="Background" 
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                )}
                 {template === "full" ? (
                   <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
                 ) : (
