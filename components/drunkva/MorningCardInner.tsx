@@ -173,14 +173,19 @@ export function MorningCardInner() {
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "drunkva-session.png", { type: "image/png" });
-        if (navigator.share) {
-          await navigator.share({ files: [file], title: "My Drunkva session" });
-        } else {
+        try {
+          if (navigator.share) {
+            await navigator.share({ files: [file], title: "My Drunkva session" });
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "drunkva-session.png"; a.click();
+          }
+        } catch (shareError) {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url; a.download = "drunkva-session.png"; a.click();
         }
-        // After share completes, open witness tagging sheet if not already done.
         if (!witnessShared) setWitnessSheetOpen(true);
       }, "image/png");
     } catch {}
