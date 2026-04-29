@@ -169,7 +169,7 @@ export function MorningCardInner() {
     setExporting(true);
     try {
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(target, { scale: 4, useCORS: true, backgroundColor: null, logging: false });
+      const canvas = await html2canvas(target, { scale: 5, useCORS: true, backgroundColor: null, logging: false });
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "drunkva-session.png", { type: "image/png" });

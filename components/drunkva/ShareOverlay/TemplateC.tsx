@@ -132,7 +132,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
 
           <div className="w-[128px]">
             <svg width="128" height="48" viewBox="0 0 128 48" preserveAspectRatio="none" aria-hidden="true">
-              <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.4} />
+              <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.6} />
               <polyline
                 points={graph.points}
                 fill="none"
@@ -140,22 +140,22 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
                 strokeWidth={3}
                 strokeLinejoin="round"
                 strokeLinecap="round"
+                strokeOpacity={0.9}
               />
               <circle cx={graph.peakX} cy={graph.peakY} r={3.5} fill="var(--primary)" />
             </svg>
           </div>
-        </div>
-      </div>
 
-      {/* Logo block */}
-      <div className="absolute bottom-[6%] left-0 right-0 flex justify-center">
-        <Image
-          src="/drunkva-wordmark-white.png"
-          alt="Drunkva"
-          width={80}
-          height={16}
-          className="h-4 w-auto object-contain opacity-100"
-        />
+          <div className="h-4" />
+
+          <Image
+            src="/drunkva-wordmark-white.png"
+            alt="Drunkva"
+            width={80}
+            height={16}
+            className="h-4 w-auto object-contain opacity-100"
+          />
+        </div>
       </div>
     </div>
   );
