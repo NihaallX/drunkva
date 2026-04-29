@@ -60,22 +60,15 @@ export function TemplateA({ session, drinks, fastestBeerIsPR }: TemplateAProps) 
         }}
       />
 
-      {/* Drinks Block */}
-      <div className="absolute top-[15%] left-0 right-0 flex flex-col items-center">
+      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-6 px-8 text-center">
         <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
-      </div>
-
-      {/* Fastest Block */}
-      <div className="absolute top-[38%] left-0 right-0 flex flex-col items-center">
+        
         <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
-      </div>
 
-      {/* Time Block */}
-      {showDuration && (
-        <div className="absolute top-[61%] left-0 right-0 flex flex-col items-center">
+        {showDuration && (
           <Stat value={duration} label="Time" />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

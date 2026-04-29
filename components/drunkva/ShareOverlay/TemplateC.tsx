@@ -114,44 +114,36 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
         }}
       />
 
-      {/* Drinks Block */}
-      <div className="absolute top-[12%] left-0 right-0 flex flex-col items-center">
+      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-6 px-8 text-center">
         <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
-      </div>
-
-      {/* Fastest Block */}
-      <div className="absolute top-[32%] left-0 right-0 flex flex-col items-center">
+        
         <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
-      </div>
 
-      {/* Time Block */}
-      {showDuration && (
-        <div className="absolute top-[52%] left-0 right-0 flex flex-col items-center">
+        {showDuration && (
           <Stat value={duration} label="Time" />
-        </div>
-      )}
+        )}
 
-      {/* Ascend / Graph Block */}
-      <div className="absolute top-[72%] left-0 right-0 flex flex-col items-center">
-        <div className="text-[11px] uppercase tracking-[0.12em] text-white font-medium">
-          {stage} &middot; {confidence}%
-        </div>
+        <div className="mt-2 flex flex-col items-center">
+          <div className="text-[11px] uppercase tracking-[0.12em] text-white font-medium">
+            {stage} &middot; {confidence}%
+          </div>
 
-        <div className="h-3" />
+          <div className="h-3" />
 
-        <div className="w-[128px]">
-          <svg width="128" height="48" viewBox="0 0 128 48" preserveAspectRatio="none" aria-hidden="true">
-            <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.4} />
-            <polyline
-              points={graph.points}
-              fill="none"
-              stroke="var(--primary)"
-              strokeWidth={3}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            <circle cx={graph.peakX} cy={graph.peakY} r={3.5} fill="var(--primary)" />
-          </svg>
+          <div className="w-[128px]">
+            <svg width="128" height="48" viewBox="0 0 128 48" preserveAspectRatio="none" aria-hidden="true">
+              <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.4} />
+              <polyline
+                points={graph.points}
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth={3}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              <circle cx={graph.peakX} cy={graph.peakY} r={3.5} fill="var(--primary)" />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -162,7 +154,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
           alt="Drunkva"
           width={80}
           height={16}
-          className="h-4 w-auto object-contain opacity-60"
+          className="h-4 w-auto object-contain opacity-100"
         />
       </div>
     </div>
