@@ -5,6 +5,8 @@ export interface ShareOverlaySession {
   end_time?: string | null;
   peak_stage?: string | null;
   peak_confidence_pct?: number | null;
+  dominantDrink?: string | null;
+  dominant_drink_type?: string | null;
 }
 
 export interface ShareOverlayDrink {
@@ -31,19 +33,30 @@ export function getSessionDuration(session: ShareOverlaySession): string {
   return formatSessionDuration(new Date(session.end_time).getTime() - new Date(session.start_time).getTime());
 }
 
-export function getDominantDrinkLabel(drinks: ShareOverlayDrink[]): string {
+function pluralizeDrinkType(type: string): string {
+  const normalized = type.toUpperCase();
+  const labels: Record<string, string> = {
+    BEER: "BEERS",
+    SHOT: "SHOTS",
+    WINE: "WINES",
+    COCKTAIL: "COCKTAILS",
+    SPIRIT: "SPIRITS",
+  };
+
+  return labels[normalized] ?? (normalized.endsWith("S") ? normalized : `${normalized}S`);
+}
+
+export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: ShareOverlaySession): string {
+  const sessionDominant = session?.dominantDrink ?? session?.dominant_drink_type;
+  if (sessionDominant) return pluralizeDrinkType(sessionDominant);
   if (drinks.length === 0) return "DRINKS";
 
   const counts = drinks.reduce<Record<string, number>>((acc, drink) => {
     acc[drink.type] = (acc[drink.type] ?? 0) + 1;
     return acc;
   }, {});
-  const [type, count] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? ["drink", 0];
-  const normalized = type.toUpperCase();
-
-  if (count === 1) return normalized;
-  if (normalized.endsWith("S")) return normalized;
-  return `${normalized}S`;
+  const [type] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? ["drink", 0];
+  return pluralizeDrinkType(type);
 }
 
 export function getFastestBeerLabel(drinks: ShareOverlayDrink[]): string {

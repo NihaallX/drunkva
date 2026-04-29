@@ -216,6 +216,10 @@
   line-height: 1.4;
 }
 
+.dv-overlay-text {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
 /* Confidence progress bar */
 .dv-bar-track {
   height: 6px;
