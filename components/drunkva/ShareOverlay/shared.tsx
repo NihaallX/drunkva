@@ -31,7 +31,7 @@ export function getFastestBeer(drinks: ShareOverlayDrink[]): number | null {
 }
 
 export function getSessionDuration(session: ShareOverlaySession): string {
-  if (session.active_duration_seconds == null) return "â€”";
+  if (session.active_duration_seconds == null) return "-";
   return formatLiveDuration(session.active_duration_seconds);
 }
 
@@ -63,5 +63,5 @@ export function getDominantDrinkLabel(drinks: ShareOverlayDrink[], session?: Sha
 
 export function getFastestBeerLabel(drinks: ShareOverlayDrink[]): string {
   const fastestBeer = getFastestBeer(drinks);
-  return fastestBeer != null ? formatDuration(fastestBeer) : "â€”";
+  return fastestBeer != null ? formatDuration(fastestBeer) : "-";
 }

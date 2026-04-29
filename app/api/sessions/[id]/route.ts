@@ -1,44 +1,68 @@
 import { NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth";
 import sql from "@/lib/db";
-import { calculateActiveDurationSeconds, calculateTotalDurationSeconds, type SessionDrinkTime } from "@/lib/session-duration";
+import {
+  calculateActiveDurationSeconds,
+  calculateTotalDurationSeconds,
+  type SessionDrinkTime,
+} from "@/lib/session-duration";
 
-// GET /api/sessions/[id] — full session + drinks (public — no auth required for viewing)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// GET /api/sessions/[id] - full session + drinks (public)
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [session] = await sql`
-    SELECT s.*, u.real_name, u.alias, u.avatar_url
-    FROM sessions s
-    JOIN users u ON u.id = s.user_id
-    WHERE s.id = ${id}
-  `;
-  if (!session) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Invalid session id" }, { status: 400 });
+  }
 
-  const drinks = await sql`
-    SELECT * FROM drinks WHERE session_id = ${id} ORDER BY logged_at ASC
-  `;
+  try {
+    const [sessionRow] = await sql`
+      SELECT * FROM sessions
+      WHERE id = ${id}
+    `;
+    if (!sessionRow) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const witnesses = await sql`
-    SELECT sw.*, u.real_name, u.alias, u.avatar_url
-    FROM session_witnesses sw
-    JOIN users u ON u.id = sw.user_id
-    WHERE sw.session_id = ${id}
-  `;
+    const [user] = await sql`
+      SELECT real_name, alias, avatar_url
+      FROM users
+      WHERE id = ${sessionRow.user_id}
+    `;
 
-  const cheersCount = await sql`
-    SELECT COUNT(*) as count FROM cheers WHERE session_id = ${id}
-  `;
+    const drinks = await sql`
+      SELECT * FROM drinks WHERE session_id = ${id} ORDER BY logged_at ASC
+    `;
 
-  return NextResponse.json({
-    session,
-    drinks,
-    witnesses,
-    cheers_count: Number(cheersCount[0]?.count ?? 0),
-  });
+    const witnesses = await sql`
+      SELECT sw.*, u.real_name, u.alias, u.avatar_url
+      FROM session_witnesses sw
+      JOIN users u ON u.id = sw.user_id
+      WHERE sw.session_id = ${id}
+    `;
+
+    const cheersCount = await sql`
+      SELECT COUNT(*) as count FROM cheers WHERE session_id = ${id}
+    `;
+
+    return NextResponse.json({
+      session: {
+        ...sessionRow,
+        real_name: user?.real_name ?? null,
+        alias: user?.alias ?? null,
+        avatar_url: user?.avatar_url ?? null,
+      },
+      drinks,
+      witnesses,
+      cheers_count: Number(cheersCount[0]?.count ?? 0),
+    });
+  } catch (error) {
+    console.error("GET /api/sessions/[id] failed", { id, error });
+    return NextResponse.json({ error: "Failed to load session" }, { status: 500 });
+  }
 }
 
-// PATCH /api/sessions/[id] — update session (end, title, extras)
+// PATCH /api/sessions/[id] - update session (end, title, extras)
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getOrCreateUser();
@@ -101,21 +125,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({ session });
 }
 
-// DELETE /api/sessions/[id] — delete session and recalculate PBs
+// DELETE /api/sessions/[id] - delete session and recalculate PBs
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getOrCreateUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [deleted] = await sql`
-    DELETE FROM sessions 
+    DELETE FROM sessions
     WHERE id = ${id} AND user_id = ${user.id}
     RETURNING id
   `;
 
   if (!deleted) return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 });
 
-  // Recalculate affected PBs
   await sql`
     UPDATE users u SET pb_beer_seconds = (
       SELECT MIN(d.duration_seconds) FROM drinks d
