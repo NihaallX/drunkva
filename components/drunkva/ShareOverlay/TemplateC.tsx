@@ -158,7 +158,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
           alt="Drunkva"
           width={80}
           height={16}
-          className="h-4 w-auto object-contain opacity-60"
+          className="h-4 w-auto object-contain opacity-35"
         />
       </div>
     </div>
