@@ -3,11 +3,33 @@ import { getOrCreateUser } from "@/lib/auth";
 import sql from "@/lib/db";
 import { calculateConfidence, getStage } from "@/lib/confidence";
 import { MAX_SPEED_SECONDS, MIN_REALISTIC_SECONDS, normalizeDuration } from "@/lib/drink-speed";
+import { drinksLimiter } from "@/lib/rate-limit";
+
+const VALID_DRINK_TYPES = new Set(["beer", "shot", "wine", "cocktail", "spirit"] as const);
+type DrinkType = "beer" | "shot" | "wine" | "cocktail" | "spirit";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // POST /api/drinks - log a drink in the active session
 export async function POST(req: Request) {
   const user = await getOrCreateUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit: max 60 drink logs per user per minute
+  const limit = drinksLimiter.check(String(user.id));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Slow down." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((limit.resetAt - Date.now()) / 1000)),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(limit.resetAt),
+        },
+      }
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const { session_id, type, logged_at, manual_duration_seconds } = body;
@@ -16,7 +38,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "session_id and type required" }, { status: 400 });
   }
 
-  // Verify session belongs to user
+  // Validate session_id format to prevent unexpected values reaching the DB
+  if (typeof session_id !== "string" || !UUID_RE.test(session_id)) {
+    return NextResponse.json({ error: "Invalid session_id" }, { status: 400 });
+  }
+
+  // Strict enum check — reject unknown drink types before they reach the DB
+  if (typeof type !== "string" || !VALID_DRINK_TYPES.has(type as DrinkType)) {
+    return NextResponse.json(
+      { error: `Invalid drink type. Must be one of: ${[...VALID_DRINK_TYPES].join(", ")}` },
+      { status: 400 }
+    );
+  }
+
+  // Sanitise manual_duration_seconds — must be a finite positive number if present
+  if (manual_duration_seconds !== undefined && manual_duration_seconds !== null) {
+    if (
+      typeof manual_duration_seconds !== "number" ||
+      !Number.isFinite(manual_duration_seconds) ||
+      manual_duration_seconds < 0
+    ) {
+      return NextResponse.json({ error: "Invalid manual_duration_seconds" }, { status: 400 });
+    }
+  }
+
+  // Validate logged_at is a parseable ISO timestamp if provided
+  if (logged_at !== undefined && logged_at !== null) {
+    if (typeof logged_at !== "string" || !Number.isFinite(new Date(logged_at).getTime())) {
+      return NextResponse.json({ error: "Invalid logged_at timestamp" }, { status: 400 });
+    }
+  }
+
+  // Verify session belongs to user and is still open
   const [session] = await sql`
     SELECT * FROM sessions
     WHERE id = ${session_id} AND user_id = ${user.id} AND end_time IS NULL
