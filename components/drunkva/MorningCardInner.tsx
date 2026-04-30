@@ -147,126 +147,145 @@ export function MorningCardInner() {
     setLoadingTitle(false);
   };
 
-  // Canvas-based export — avoids html2canvas object-fit stretching on photos.
-  // Step 1: draw photo with cover-fit math directly on canvas.
-  // Step 2: draw gradient scrim.
-  // Step 3: capture only the transparent stats overlay div with html2canvas.
-  // Step 4: composite overlay at the dragged position.
-  const exportAndShare = async () => {
+  // Builds the export canvas and returns the blob.
+  // Step 1: draw photo / gradient background onto a 1080x1920 canvas.
+  // Step 2: draw a gradient scrim for text legibility.
+  // Step 3: capture the stats overlay div with html2canvas at a scale that maps
+  //         the element's natural (un-scaled) width to EXPORT_W.
+  //         We read the element's natural dimensions via a temporary reset of the
+  //         CSS transform — this avoids the broken `offsetWidth` when scale != 1.
+  // Step 4: composite overlay at the dragged y-position.
+  const buildExportBlob = async (): Promise<Blob> => {
     const overlayEl = overlayRef.current;
-    if (!overlayEl || exporting) return;
-    setExporting(true);
+    if (!overlayEl) throw new Error("overlay not mounted");
 
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = EXPORT_W;
-      canvas.height = EXPORT_H;
-      const ctx = canvas.getContext("2d")!;
+    const canvas = document.createElement("canvas");
+    canvas.width = EXPORT_W;
+    canvas.height = EXPORT_H;
+    const ctx = canvas.getContext("2d")!;
 
-      // Step 1 — background
-      if (userPhoto) {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = userPhoto;
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = reject;
-        });
-
-        // Cover-fit: maintain natural aspect ratio, crop to fill canvas
-        const imgAspect = img.naturalWidth / img.naturalHeight;
-        const canvasAspect = EXPORT_W / EXPORT_H;
-        let drawW: number, drawH: number, drawX: number, drawY: number;
-
-        if (imgAspect > canvasAspect) {
-          // Image is wider — fit height, crop sides
-          drawH = EXPORT_H;
-          drawW = drawH * imgAspect;
-          drawX = (EXPORT_W - drawW) / 2;
-          drawY = 0;
-        } else {
-          // Image is taller — fit width, crop top/bottom
-          drawW = EXPORT_W;
-          drawH = drawW / imgAspect;
-          drawX = 0;
-          drawY = (EXPORT_H - drawH) / 2;
-        }
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
-      } else {
-        // Gradient background preset
-        const bgPreset = BG_PRESETS.find((b) => b.id === selectedBg) ?? BG_PRESETS[0];
-        // Parse the linear-gradient into a canvas gradient (simplified: two-stop dark fill)
-        const grad = ctx.createLinearGradient(0, 0, EXPORT_W * 0.6, EXPORT_H);
-        // Use canvas-safe approximations of the CSS gradient stops
-        const gradColors: Record<string, [string, string, string]> = {
-          "dark-blue":   ["#1a1a2e", "#16213e", "#0f3460"],
-          "dark-green":  ["#0a1628", "#0d2137", "#0f3425"],
-          "dark-purple": ["#1a0a2e", "#2a1050", "#1a0a3a"],
-        };
-        const [c0, c1, c2] = gradColors[selectedBg] ?? gradColors["dark-blue"];
-        grad.addColorStop(0, c0);
-        grad.addColorStop(0.5, c1);
-        grad.addColorStop(1, c2);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-        void bgPreset;
-      }
-
-      // Step 2 — gradient scrim to improve text legibility
-      const scrim = ctx.createLinearGradient(0, EXPORT_H * 0.25, 0, EXPORT_H * 0.7);
-      scrim.addColorStop(0, "rgba(0,0,0,0)");
-      scrim.addColorStop(0.5, "rgba(0,0,0,0.25)");
-      scrim.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = scrim;
-      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-
-      // Step 3 — capture only the stats overlay (transparent background)
-      const html2canvas = (await import("html2canvas")).default;
-      const overlayCanvas = await html2canvas(overlayEl, {
-        scale: EXPORT_W / overlayEl.offsetWidth,
-        backgroundColor: null,
-        useCORS: true,
-        logging: false,
+    // Step 1 — background
+    if (userPhoto) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = userPhoto;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Photo failed to load"));
       });
+      const imgAspect = img.naturalWidth / img.naturalHeight;
+      const canvasAspect = EXPORT_W / EXPORT_H;
+      let drawW: number, drawH: number, drawX: number, drawY: number;
+      if (imgAspect > canvasAspect) {
+        drawH = EXPORT_H; drawW = drawH * imgAspect;
+        drawX = (EXPORT_W - drawW) / 2; drawY = 0;
+      } else {
+        drawW = EXPORT_W; drawH = drawW / imgAspect;
+        drawX = 0; drawY = (EXPORT_H - drawH) / 2;
+      }
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    } else {
+      const gradColors: Record<string, [string, string, string]> = {
+        "dark-blue":   ["#1a1a2e", "#16213e", "#0f3460"],
+        "dark-green":  ["#0a1628", "#0d2137", "#0f3425"],
+        "dark-purple": ["#1a0a2e", "#2a1050", "#1a0a3a"],
+      };
+      const [c0, c1, c2] = gradColors[selectedBg] ?? gradColors["dark-blue"];
+      const grad = ctx.createLinearGradient(0, 0, EXPORT_W * 0.6, EXPORT_H);
+      grad.addColorStop(0, c0);
+      grad.addColorStop(0.5, c1);
+      grad.addColorStop(1, c2);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+    }
 
-      // Step 4 — composite overlay at drag position, respecting scale
-      const previewH = previewRef.current?.offsetHeight ?? overlayEl.offsetHeight;
-      const scaledOverlayH = (overlayEl.offsetHeight / overlayEl.offsetWidth) * EXPORT_W * overlayScale;
-      const overlayYPx = (overlayY / 1) * EXPORT_H;
-      const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
+    // Step 2 — gradient scrim
+    const scrim = ctx.createLinearGradient(0, EXPORT_H * 0.25, 0, EXPORT_H * 0.7);
+    scrim.addColorStop(0, "rgba(0,0,0,0)");
+    scrim.addColorStop(0.5, "rgba(0,0,0,0.3)");
+    scrim.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = scrim;
+    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
 
-      ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, scaledOverlayH);
-      void previewH;
+    // Step 3 — capture stats overlay
+    // Temporarily reset the CSS transform so getBoundingClientRect returns the
+    // natural (un-scaled) dimensions, giving html2canvas the correct scale factor.
+    const parent = overlayEl.parentElement as HTMLElement | null;
+    const savedTransform = parent?.style.transform ?? "";
+    if (parent) parent.style.transform = "none";
 
-      // Step 5 — export
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], "drunkva-session.png", { type: "image/png" });
-        try {
-          if (navigator.share && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: "My Drunkva session" });
-          } else {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "drunkva-session.png";
-            a.click();
-            URL.revokeObjectURL(url);
-          }
-        } catch {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "drunkva-session.png";
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-        if (!witnessShared) setWitnessSheetOpen(true);
+    // Use scrollWidth/scrollHeight to get the content box size without transform
+    const naturalW = overlayEl.scrollWidth || overlayEl.offsetWidth;
+    const naturalH = overlayEl.scrollHeight || overlayEl.offsetHeight;
+    const captureScale = EXPORT_W / naturalW;
+
+    const html2canvas = (await import("html2canvas")).default;
+    const overlayCanvas = await html2canvas(overlayEl, {
+      scale: captureScale,
+      width: naturalW,
+      height: naturalH,
+      backgroundColor: null,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+    });
+
+    // Restore transform
+    if (parent) parent.style.transform = savedTransform;
+
+    // Step 4 — composite at drag position
+    const exportedOverlayH = naturalH * captureScale * overlayScale;
+    const overlayYPx = overlayY * EXPORT_H;
+    const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
+    ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, exportedOverlayH);
+
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("toBlob returned null"));
       }, "image/png");
+    });
+  };
+
+  const handleShare = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const blob = await buildExportBlob();
+      const file = new File([blob], "drunkva-session.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "My Drunkva session" });
+        if (!witnessShared) setWitnessSheetOpen(true);
+      } else {
+        // Fallback: treat as download if Web Share not available
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "drunkva-session.png"; a.click();
+        URL.revokeObjectURL(url);
+        if (!witnessShared) setWitnessSheetOpen(true);
+      }
+    } catch (err: unknown) {
+      // navigator.share throws AbortError if user cancels — don't show error toast
+      const name = (err as Error)?.name;
+      if (name !== "AbortError") showToast("Share failed — try Download instead");
+    }
+    setExporting(false);
+  };
+
+  const handleDownload = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const blob = await buildExportBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "drunkva-session.png"; a.click();
+      URL.revokeObjectURL(url);
+      showToast("Saved to Downloads");
+      if (!witnessShared) setWitnessSheetOpen(true);
     } catch {
       showToast("Export failed — please try again");
     }
-
     setExporting(false);
   };
 
@@ -475,11 +494,26 @@ export function MorningCardInner() {
               <span className="text-base text-muted-foreground" aria-hidden="true">A</span>
             </div>
 
-            {/* Share button */}
-            <Button id="export-share-btn" onClick={exportAndShare} disabled={exporting}
-              className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              {exporting ? "Exporting..." : "Share"}
-            </Button>
+            {/* Share + Download buttons */}
+            <div className="flex gap-2">
+              <Button
+                id="export-share-btn"
+                onClick={handleShare}
+                disabled={exporting}
+                className="flex-1 bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium"
+              >
+                {exporting ? "Exporting..." : "Share"}
+              </Button>
+              <Button
+                id="export-download-btn"
+                onClick={handleDownload}
+                disabled={exporting}
+                variant="outline"
+                className="flex-1 border-border text-foreground h-12 text-[15px] font-medium"
+              >
+                Download
+              </Button>
+            </div>
           </div>
         )}
       </div>

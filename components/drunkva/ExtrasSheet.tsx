@@ -94,6 +94,7 @@ export function ExtrasSheet({
       open={open}
       onOpenChange={(o) => !o && onClose()}
       direction="bottom"
+      modal={false}
     >
       <DrawerContent
         className={cn(
