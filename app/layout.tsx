@@ -22,12 +22,6 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
-// Heading / display font â€” athletic, geometric, matches Drunkva's brand
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -37,7 +31,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Drunkva â€” Track Every Session",
+  title: "Drunkva — Track Every Session",
   description:
     "The social drinking session tracker. Log drinks, track your confidence curve, share your night.",
   manifest: "/manifest.webmanifest",
@@ -60,7 +54,7 @@ const clerkEnabled = process.env.NEXT_PUBLIC_CLERK_ENABLED === "true";
 
 function Providers({ children }: { children: React.ReactNode }) {
   return (
-    // ThemeProvider still manages theme context â€” but we suppress forcedTheme
+    // ThemeProvider still manages theme context — but we suppress forcedTheme
     // to stop next-themes injecting style={{color-scheme:"dark"}} on <html>.
     // Dark mode is handled entirely via CSS (color-scheme: dark in :root).
     <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
@@ -74,12 +68,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const content = (
-    // <html> has NO className and NO inline style â€” avoids all SSR/client hydration mismatches.
+    // <html> has NO className and NO inline style — avoids all SSR/client hydration mismatches.
     // Dark mode is set globally via `color-scheme: dark` in :root (globals.css).
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Preconnect to external origins hit early in the page lifecycle.
-            Establishing the TCP+TLS handshake before JS runs saves 200–400ms
+            Establishing the TCP+TLS handshake before JS runs saves 200-400ms
             on first auth check and avatar image loads. */}
         <link rel="preconnect" href="https://clerk.accounts.dev" />
         <link rel="preconnect" href="https://img.clerk.com" crossOrigin="anonymous" />
