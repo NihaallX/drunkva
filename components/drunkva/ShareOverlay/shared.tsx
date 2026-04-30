@@ -1,3 +1,5 @@
+"use client";
+
 import { formatDuration } from "@/lib/confidence";
 import { getPreferredFastestDrink, type TimingMethod } from "@/lib/drink-speed";
 
@@ -83,4 +85,35 @@ export function getFastestStat(drinks: ShareOverlayDrink[], session?: ShareOverl
     value: formatDuration(fastest.duration_seconds),
     isStopwatch: fastest.timing_method === "stopwatch",
   };
+}
+
+// ---------------------------------------------------------------------------
+// Shared UI primitive used by all share overlay templates
+// ---------------------------------------------------------------------------
+
+export function Stat({
+  value,
+  label,
+  unit,
+  showPR,
+}: {
+  value: string | number;
+  label: string;
+  unit?: string;
+  showPR?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="flex items-end justify-center gap-2">
+        <span className="dv-overlay-number">{value}</span>
+        {unit && <span className="dv-overlay-unit pb-1">{unit}</span>}
+        {showPR && (
+          <span className="mb-2 rounded-full bg-primary px-2 py-1 text-[10px] font-medium leading-none text-white">
+            PR
+          </span>
+        )}
+      </div>
+      <div className="dv-overlay-label mt-1.5">{label}</div>
+    </div>
+  );
 }

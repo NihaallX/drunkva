@@ -6,6 +6,7 @@ import {
   getDominantDrinkLabel,
   getFastestStat,
   getSessionDuration,
+  Stat,
   type ShareOverlayDrink,
   type ShareOverlaySession,
 } from "./shared";
@@ -64,33 +65,6 @@ function buildArc(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
     peakX: peakPoint.x,
     peakY: peakPoint.y,
   };
-}
-
-function Stat({
-  value,
-  label,
-  unit,
-  showPR,
-}: {
-  value: string | number;
-  label: string;
-  unit?: string;
-  showPR?: boolean;
-}) {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div className="flex items-end justify-center gap-2">
-        <span className="dv-overlay-number">{value}</span>
-        {unit && <span className="dv-overlay-unit pb-1">{unit}</span>}
-        {showPR && (
-          <span className="mb-2 rounded-full bg-primary px-2 py-1 text-[10px] font-medium leading-none text-white">
-            PR
-          </span>
-        )}
-      </div>
-      <div className="dv-overlay-label mt-1.5">{label}</div>
-    </div>
-  );
 }
 
 export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) {
