@@ -19,7 +19,7 @@ interface TemplateCProps {
 
 const CARD_WIDTH = 390;
 const ARC_WIDTH = 128;
-const ARC_HEIGHT = 48;
+const ARC_HEIGHT = 32;
 
 function buildArc(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
   const curve = reconstructCurve(drinks, session.start_time);
@@ -88,46 +88,46 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
         }}
       />
 
-      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-6 px-8 text-center">
+      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-4 px-8 text-center">
         <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
-        
+
         <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
 
         {showDuration && (
           <Stat value={duration} label="Time" />
         )}
 
-        <div className="mt-2 flex flex-col items-center">
-          <div className="text-[11px] uppercase tracking-[0.12em] text-white font-medium">
+        <div className="flex flex-col items-center">
+          <div className="text-[11px] uppercase tracking-[0.12em] text-white/70 font-medium">
             {stage} &middot; {confidence}%
           </div>
 
-          <div className="h-3" />
+          <div className="h-2" />
 
           <div className="w-[128px]">
-            <svg width="128" height="48" viewBox="0 0 128 48" preserveAspectRatio="none" aria-hidden="true">
+            <svg width="128" height="32" viewBox="0 0 128 32" preserveAspectRatio="none" aria-hidden="true">
               <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.6} />
               <polyline
                 points={graph.points}
                 fill="none"
                 stroke="var(--primary)"
-                strokeWidth={3}
+                strokeWidth={2.5}
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 strokeOpacity={0.9}
               />
-              <circle cx={graph.peakX} cy={graph.peakY} r={3.5} fill="var(--primary)" />
+              <circle cx={graph.peakX} cy={graph.peakY} r={3} fill="var(--primary)" />
             </svg>
           </div>
 
-          <div className="h-4" />
+          <div className="h-2" />
 
           <Image
             src="/drunkva-wordmark-white.png"
             alt="Drunkva"
-            width={80}
-            height={16}
-            className="h-4 w-auto object-contain opacity-100"
+            width={70}
+            height={14}
+            className="h-[14px] w-auto object-contain opacity-80"
           />
         </div>
       </div>

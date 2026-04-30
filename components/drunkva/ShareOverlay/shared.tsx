@@ -25,10 +25,16 @@ export function formatOverlayDuration(seconds: number | null | undefined): strin
   if (seconds == null) return "-";
 
   const totalSeconds = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(totalSeconds / 60);
+  const totalMinutes = Math.floor(totalSeconds / 60);
   const remainderSeconds = totalSeconds % 60;
 
-  return `${minutes}m ${remainderSeconds.toString().padStart(2, "0")}s`;
+  if (totalMinutes >= 60) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h}:${m.toString().padStart(2, "0")}`;
+  }
+
+  return `${totalMinutes}:${remainderSeconds.toString().padStart(2, "0")}`;
 }
 
 export function getSessionDuration(session: ShareOverlaySession): string {
@@ -104,16 +110,17 @@ export function Stat({
 }) {
   return (
     <div className="flex flex-col items-center text-center">
-      <div className="flex items-end justify-center gap-2">
+      {/* Label sits ABOVE the number — Strava layout */}
+      <div className="dv-overlay-label">{label}</div>
+      <div className="flex items-end justify-center gap-1.5">
         <span className="dv-overlay-number">{value}</span>
-        {unit && <span className="dv-overlay-unit pb-1">{unit}</span>}
+        {unit && <span className="dv-overlay-unit pb-2">{unit}</span>}
         {showPR && (
-          <span className="mb-2 rounded-full bg-primary px-2 py-1 text-[10px] font-medium leading-none text-white">
+          <span className="mb-3 rounded-full bg-primary px-2 py-1 text-[10px] font-medium leading-none text-white">
             PR
           </span>
         )}
       </div>
-      <div className="dv-overlay-label mt-1.5">{label}</div>
     </div>
   );
 }

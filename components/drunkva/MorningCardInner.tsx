@@ -13,6 +13,9 @@ import { WitnessSheet } from "@/components/drunkva/WitnessSheet";
 import { TemplateA } from "@/components/drunkva/ShareOverlay/TemplateA";
 import { TemplateC } from "@/components/drunkva/ShareOverlay/TemplateC";
 
+const EXPORT_W = 1080;
+const EXPORT_H = 1920;
+
 const BG_PRESETS = [
   { id: "dark-blue", style: "linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" },
   { id: "dark-green", style: "linear-gradient(160deg, #0a1628 0%, #0d2137 50%, #0f3425 100%)" },
@@ -21,7 +24,7 @@ const BG_PRESETS = [
 
 type Template = "full" | "minimal";
 
-//  Step indicator 
+// Step indicator
 function StepBar({ step }: { step: number }) {
   return (
     <div className="flex gap-1.5 mb-5">
@@ -38,7 +41,7 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-//  Toast notification 
+// Toast notification
 function Toast({ message, visible }: { message: string; visible: boolean }) {
   return (
     <div
@@ -52,51 +55,21 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
   );
 }
 
-//  Share overlay 
-interface OverlayProps {
-  session: any;
-  drinks: any[];
-  bgStyle: React.CSSProperties;
-  template: Template;
-  overlayRef: React.RefObject<HTMLDivElement | null>;
-  fastestBeerIsPR?: boolean;
-  userPhoto?: string | null;
-}
-
-function ShareOverlay({ session, drinks, bgStyle, template, overlayRef, fastestBeerIsPR, userPhoto }: OverlayProps) {
-  const finalBgStyle = userPhoto ? {} : bgStyle;
-  
-  return (
-    <div
-      ref={overlayRef}
-      className="relative w-full overflow-hidden rounded-xl bg-black"
-      style={{ aspectRatio: "9/16", ...finalBgStyle }}
-    >
-      {userPhoto && (
-        <img 
-          src={userPhoto} 
-          alt="Background" 
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      )}
-      {template === "full" ? (
-        <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-      ) : (
-        <TemplateA session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-      )}
-    </div>
-  );
-}
-
-//  Main component 
+// Main component
 export function MorningCardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId");
-  const overlayRef = useRef<HTMLDivElement | null>(null);
-  const hiddenOverlayRef = useRef<HTMLDivElement | null>(null);
-  const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Refs
+  const overlayRef = useRef<HTMLDivElement | null>(null);     // stats overlay only (transparent bg)
+  const previewRef = useRef<HTMLDivElement | null>(null);     // the visible preview container
+  const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const isDragging = useRef(false);
+  const dragStartY = useRef(0);
+  const dragStartOverlayY = useRef(0);
+
+  // State
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [session, setSession] = useState<any>(null);
   const [drinks, setDrinks] = useState<any[]>([]);
@@ -112,6 +85,11 @@ export function MorningCardInner() {
   const [witnessSheetOpen, setWitnessSheetOpen] = useState(false);
   const [witnessShared, setWitnessShared] = useState(false);
 
+  // Drag to reposition: 0.0 = top, 0.75 = max bottom (to keep overlay visible)
+  const [overlayY, setOverlayY] = useState(0.2);
+  // Scale slider: 0.6 to 1.2, applied to the overlay card
+  const [overlayScale, setOverlayScale] = useState(1.0);
+
   const showToast = (message: string) => {
     setToast({ visible: true, message });
     setTimeout(() => setToast({ visible: false, message: "" }), 3500);
@@ -125,12 +103,8 @@ export function MorningCardInner() {
         setSession(data.session);
         setDrinks(data.drinks ?? []);
         setVenueName(data.session.venue_name ?? "");
-        // Check if this session set a PR
         const beerDrinks = (data.drinks ?? []).filter((d: any) => d.type === "beer" && d.duration_seconds != null);
         if (beerDrinks.length > 0) {
-          // The API already stores is_pr per drink.
-          // Use the fastest beer in the session vs profile lifetime min
-          // For now, propagate from session flags via drinks
           const hasPR = beerDrinks.some((d: any) => d.is_pr === true);
           setFastestBeerIsPR(hasPR);
         }
@@ -173,42 +147,126 @@ export function MorningCardInner() {
     setLoadingTitle(false);
   };
 
+  // Canvas-based export — avoids html2canvas object-fit stretching on photos.
+  // Step 1: draw photo with cover-fit math directly on canvas.
+  // Step 2: draw gradient scrim.
+  // Step 3: capture only the transparent stats overlay div with html2canvas.
+  // Step 4: composite overlay at the dragged position.
   const exportAndShare = async () => {
-    const target = hiddenOverlayRef.current || overlayRef.current;
-    if (!target || exporting) return;
+    const overlayEl = overlayRef.current;
+    if (!overlayEl || exporting) return;
     setExporting(true);
+
     try {
+      const canvas = document.createElement("canvas");
+      canvas.width = EXPORT_W;
+      canvas.height = EXPORT_H;
+      const ctx = canvas.getContext("2d")!;
+
+      // Step 1 — background
+      if (userPhoto) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = userPhoto;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+        });
+
+        // Cover-fit: maintain natural aspect ratio, crop to fill canvas
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const canvasAspect = EXPORT_W / EXPORT_H;
+        let drawW: number, drawH: number, drawX: number, drawY: number;
+
+        if (imgAspect > canvasAspect) {
+          // Image is wider — fit height, crop sides
+          drawH = EXPORT_H;
+          drawW = drawH * imgAspect;
+          drawX = (EXPORT_W - drawW) / 2;
+          drawY = 0;
+        } else {
+          // Image is taller — fit width, crop top/bottom
+          drawW = EXPORT_W;
+          drawH = drawW / imgAspect;
+          drawX = 0;
+          drawY = (EXPORT_H - drawH) / 2;
+        }
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      } else {
+        // Gradient background preset
+        const bgPreset = BG_PRESETS.find((b) => b.id === selectedBg) ?? BG_PRESETS[0];
+        // Parse the linear-gradient into a canvas gradient (simplified: two-stop dark fill)
+        const grad = ctx.createLinearGradient(0, 0, EXPORT_W * 0.6, EXPORT_H);
+        // Use canvas-safe approximations of the CSS gradient stops
+        const gradColors: Record<string, [string, string, string]> = {
+          "dark-blue":   ["#1a1a2e", "#16213e", "#0f3460"],
+          "dark-green":  ["#0a1628", "#0d2137", "#0f3425"],
+          "dark-purple": ["#1a0a2e", "#2a1050", "#1a0a3a"],
+        };
+        const [c0, c1, c2] = gradColors[selectedBg] ?? gradColors["dark-blue"];
+        grad.addColorStop(0, c0);
+        grad.addColorStop(0.5, c1);
+        grad.addColorStop(1, c2);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+        void bgPreset;
+      }
+
+      // Step 2 — gradient scrim to improve text legibility
+      const scrim = ctx.createLinearGradient(0, EXPORT_H * 0.25, 0, EXPORT_H * 0.7);
+      scrim.addColorStop(0, "rgba(0,0,0,0)");
+      scrim.addColorStop(0.5, "rgba(0,0,0,0.25)");
+      scrim.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = scrim;
+      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+
+      // Step 3 — capture only the stats overlay (transparent background)
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(target, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
+      const overlayCanvas = await html2canvas(overlayEl, {
+        scale: EXPORT_W / overlayEl.offsetWidth,
         backgroundColor: null,
+        useCORS: true,
         logging: false,
-        width: 390,
-        height: 693.33,
-        windowWidth: 390,
-        windowHeight: 693.33,
       });
+
+      // Step 4 — composite overlay at drag position, respecting scale
+      const previewH = previewRef.current?.offsetHeight ?? overlayEl.offsetHeight;
+      const scaledOverlayH = (overlayEl.offsetHeight / overlayEl.offsetWidth) * EXPORT_W * overlayScale;
+      const overlayYPx = (overlayY / 1) * EXPORT_H;
+      const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
+
+      ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, scaledOverlayH);
+      void previewH;
+
+      // Step 5 — export
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "drunkva-session.png", { type: "image/png" });
         try {
-          if (navigator.share) {
+          if (navigator.share && navigator.canShare({ files: [file] })) {
             await navigator.share({ files: [file], title: "My Drunkva session" });
           } else {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
-            a.href = url; a.download = "drunkva-session.png"; a.click();
+            a.href = url;
+            a.download = "drunkva-session.png";
+            a.click();
+            URL.revokeObjectURL(url);
           }
-        } catch (shareError) {
+        } catch {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
-          a.href = url; a.download = "drunkva-session.png"; a.click();
+          a.href = url;
+          a.download = "drunkva-session.png";
+          a.click();
+          URL.revokeObjectURL(url);
         }
         if (!witnessShared) setWitnessSheetOpen(true);
       }, "image/png");
-    } catch {}
+    } catch {
+      showToast("Export failed — please try again");
+    }
+
     setExporting(false);
   };
 
@@ -263,7 +321,7 @@ export function MorningCardInner() {
             </div>
             <Button id="step1-next" onClick={() => { setStep(2); generateTitle(); }}
               className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              Generate title -&gt;
+              Generate title &rarr;
             </Button>
           </div>
         )}
@@ -276,7 +334,7 @@ export function MorningCardInner() {
               <Skeleton className="h-14 w-full rounded-[var(--radius-md)]" />
             ) : title ? (
               <div className="dv-surface p-3.5">
-                <p className="text-[15px] font-medium text-foreground leading-snug">"{title}"</p>
+                <p className="text-[15px] font-medium text-foreground leading-snug">&ldquo;{title}&rdquo;</p>
               </div>
             ) : null}
             <div className="flex gap-2">
@@ -294,10 +352,9 @@ export function MorningCardInner() {
               rows={2}
               placeholder="Write your own title..."
             />
-            {/* Title is not required; user can skip with empty title. */}
             <Button id="step2-next" onClick={() => setStep(3)}
               className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              Choose photo -&gt;
+              Choose photo &rarr;
             </Button>
           </div>
         )}
@@ -317,6 +374,7 @@ export function MorningCardInner() {
                 Clean
               </ToggleGroupItem>
             </ToggleGroup>
+
             {/* Background picker */}
             <div className="flex gap-2">
               {BG_PRESETS.map((bg) => (
@@ -332,7 +390,7 @@ export function MorningCardInner() {
                 />
               ))}
               <label className={cn(
-                "size-10 rounded-lg border cursor-pointer flex items-center justify-center text-lg bg-card transition-all",
+                "size-10 rounded-lg border cursor-pointer flex items-center justify-center bg-card transition-all",
                 userPhoto ? "border-2 border-primary" : "border-border"
               )}>
                 <ImagePlus className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -348,54 +406,73 @@ export function MorningCardInner() {
               </label>
             </div>
 
-            {/* Overlay preview */}
-            <ShareOverlay
-              session={session}
-              drinks={drinks}
-              bgStyle={bgStyle}
-              template={template}
-              overlayRef={overlayRef}
-              fastestBeerIsPR={fastestBeerIsPR}
-              userPhoto={userPhoto}
-            />
-
-            {/* Hidden absolute 9:16 target for unified export bounds */}
+            {/* Preview — 9:16 container with draggable overlay */}
             <div
-              style={{
-                position: "fixed",
-                left: "-9999px",
-                top: "0px",
-                width: "390px",
-                height: "693.33px",
-                overflow: "hidden",
-                zIndex: -1,
-              }}
+              ref={previewRef}
+              className="relative w-full overflow-hidden rounded-xl bg-black"
+              style={{ aspectRatio: "9/16", ...bgStyle }}
             >
+              {userPhoto && (
+                <img
+                  src={userPhoto}
+                  alt="Background"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                />
+              )}
+
+              {/* Draggable stats overlay */}
               <div
-                ref={hiddenOverlayRef}
+                className="absolute left-0 right-0 cursor-grab active:cursor-grabbing select-none"
                 style={{
-                  position: "relative",
-                  width: "390px",
-                  height: "693.33px",
-                  overflow: "hidden",
-                  backgroundColor: "black",
-                  ...(userPhoto ? {} : bgStyle),
+                  top: `${overlayY * 100}%`,
+                  transform: `scale(${overlayScale})`,
+                  transformOrigin: "top center",
                 }}
+                onPointerDown={(e) => {
+                  isDragging.current = true;
+                  dragStartY.current = e.clientY;
+                  dragStartOverlayY.current = overlayY;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  if (!isDragging.current || !previewRef.current) return;
+                  const containerH = previewRef.current.offsetHeight;
+                  const deltaFraction = (e.clientY - dragStartY.current) / containerH;
+                  const newY = Math.max(0, Math.min(0.75, dragStartOverlayY.current + deltaFraction));
+                  setOverlayY(newY);
+                }}
+                onPointerUp={() => { isDragging.current = false; }}
               >
-                {userPhoto && (
-                  <img
-                    src={userPhoto}
-                    alt="Background"
-                    crossOrigin="anonymous"
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                )}
-                {template === "full" ? (
-                  <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-                ) : (
-                  <TemplateA session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-                )}
+                {/* Drag handle indicator */}
+                <div className="flex justify-center mb-2 opacity-50 pointer-events-none">
+                  <div className="w-8 h-1 rounded-full bg-white" />
+                </div>
+
+                {/* Stats overlay — transparent bg so canvas compositing works */}
+                <div ref={overlayRef}>
+                  {template === "full" ? (
+                    <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                  ) : (
+                    <TemplateA session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                  )}
+                </div>
               </div>
+            </div>
+
+            {/* Scale slider */}
+            <div className="flex items-center gap-3 px-1">
+              <span className="text-xs text-muted-foreground" aria-hidden="true">A</span>
+              <input
+                type="range"
+                min={0.6}
+                max={1.2}
+                step={0.05}
+                value={overlayScale}
+                onChange={(e) => setOverlayScale(parseFloat(e.target.value))}
+                className="flex-1 accent-primary"
+                aria-label="Overlay size"
+              />
+              <span className="text-base text-muted-foreground" aria-hidden="true">A</span>
             </div>
 
             {/* Share button */}
@@ -407,7 +484,7 @@ export function MorningCardInner() {
         )}
       </div>
 
-      {/* Witness tagging sheet appears after share. */}
+      {/* Witness tagging sheet appears after share */}
       {sessionId && (
         <WitnessSheet
           open={witnessSheetOpen}
