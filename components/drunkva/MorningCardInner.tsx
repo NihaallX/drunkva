@@ -179,7 +179,17 @@ export function MorningCardInner() {
     setExporting(true);
     try {
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(target, { scale: 5, useCORS: true, backgroundColor: null, logging: false });
+      const canvas = await html2canvas(target, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false,
+        width: 390,
+        height: 693.33,
+        windowWidth: 390,
+        windowHeight: 693.33,
+      });
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "drunkva-session.png", { type: "image/png" });
@@ -352,23 +362,32 @@ export function MorningCardInner() {
             {/* Hidden absolute 9:16 target for unified export bounds */}
             <div
               style={{
-                position: "absolute",
+                position: "fixed",
                 left: "-9999px",
-                top: "-9999px",
+                top: "0px",
                 width: "390px",
                 height: "693.33px",
+                overflow: "hidden",
+                zIndex: -1,
               }}
             >
               <div
                 ref={hiddenOverlayRef}
-                className="relative w-full h-full overflow-hidden bg-black"
-                style={userPhoto ? {} : bgStyle}
+                style={{
+                  position: "relative",
+                  width: "390px",
+                  height: "693.33px",
+                  overflow: "hidden",
+                  backgroundColor: "black",
+                  ...(userPhoto ? {} : bgStyle),
+                }}
               >
                 {userPhoto && (
-                  <img 
-                    src={userPhoto} 
-                    alt="Background" 
-                    className="absolute inset-0 w-full h-full object-cover"
+                  <img
+                    src={userPhoto}
+                    alt="Background"
+                    crossOrigin="anonymous"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 )}
                 {template === "full" ? (
