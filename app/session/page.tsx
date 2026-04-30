@@ -6,15 +6,7 @@ import { SessionStartScreen } from "@/components/drunkva/SessionStartScreen";
 import { LiveSessionScreen } from "@/components/drunkva/LiveSessionScreen";
 import { ExtrasSheet } from "@/components/drunkva/ExtrasSheet";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
-import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
-import { useUser as useClerkUser } from "@clerk/nextjs";
-
-let useUser: () => { user: typeof MOCK_USER | null | any };
-if (clerkEnabled) {
-  useUser = useClerkUser;
-} else {
-  useUser = () => ({ user: MOCK_USER });
-}
+import { useUser } from "@/hooks/useUser";
 
 interface DrinkLog {
   id?: string;

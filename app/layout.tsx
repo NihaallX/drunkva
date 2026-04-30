@@ -8,10 +8,18 @@ import { InstallPrompt } from "@/components/drunkva/InstallPrompt";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
-// Body font
+// Body font — display: swap prevents invisible text while font loads
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+// Heading / display font — athletic, geometric, matches Drunkva's brand
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
 });
 
 // Heading / display font â€” athletic, geometric, matches Drunkva's brand
@@ -69,6 +77,18 @@ export default function RootLayout({
     // <html> has NO className and NO inline style â€” avoids all SSR/client hydration mismatches.
     // Dark mode is set globally via `color-scheme: dark` in :root (globals.css).
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to external origins hit early in the page lifecycle.
+            Establishing the TCP+TLS handshake before JS runs saves 200–400ms
+            on first auth check and avatar image loads. */}
+        <link rel="preconnect" href="https://clerk.accounts.dev" />
+        <link rel="preconnect" href="https://img.clerk.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* DNS-prefetch as a fallback for browsers that don't support preconnect */}
+        <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
+        <link rel="dns-prefetch" href="https://img.clerk.com" />
+      </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
         {/*
           Dark shell + centering container.

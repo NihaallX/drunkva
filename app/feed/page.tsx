@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import { useInView } from "react-intersection-observer";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
@@ -9,15 +10,9 @@ import { FeedCard } from "@/components/drunkva/FeedCard";
 import { BottomNav } from "@/components/drunkva/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
-import { useUser as useClerkUser } from "@clerk/nextjs";
+import { useUser } from "@/hooks/useUser";
 
-let useUser: () => { user: typeof MOCK_USER | null | any };
-if (clerkEnabled) {
-  useUser = useClerkUser;
-} else {
-  useUser = () => ({ user: MOCK_USER });
-}
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface FeedItem {
   id: string;
@@ -69,88 +64,79 @@ function LoadingSpinner() {
 export default function FeedPage() {
   const { user } = useUser();
   const router = useRouter();
-  const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [page, setPage] = useState(0);
+  const [pages, setPages] = useState<FeedItem[][]>([]);
+  const [pageIndex, setPageIndex] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const fetchingRef = useRef(false);
 
-  // Intersection observer â€” sentinel at bottom of list
+  // SWR manages page 0 — gives us free deduplication, revalidateOnFocus,
+  // and stale-while-revalidate on the initial feed load.
+  const { data: page0Data, isLoading, mutate: mutatePage0 } = useSWR<{ feed: FeedItem[]; has_more: boolean }>(
+    "/api/feed?page=0",
+    fetcher,
+    {
+      // Re-poll cheers every 30s when tab is visible — SWR handles this
+      // natively via refreshInterval. Only page 0 is polled; deeper pages
+      // are fetched once and merged locally.
+      refreshInterval: 30_000,
+      revalidateOnFocus: true,
+      dedupingInterval: 10_000,
+      onSuccess: (data) => {
+        setPages((prev) => {
+          const next = [...prev];
+          next[0] = data.feed;
+          return next;
+        });
+        setHasMore(data.has_more);
+      },
+    }
+  );
+
+  // Flatten all pages into a single ordered list
+  const feed = pages.flat();
+
   const { ref: sentinelRef, inView } = useInView({ threshold: 0 });
 
-  const loadFeed = useCallback(async (pageNum: number, replace = false) => {
-    if (fetchingRef.current) return;
+  // Load next page when sentinel enters viewport
+  const loadNextPage = useCallback(async () => {
+    if (fetchingRef.current || !hasMore || loadingMore) return;
     fetchingRef.current = true;
+    setLoadingMore(true);
+    const next = pageIndex + 1;
     try {
-      const res = await fetch(`/api/feed?page=${pageNum}`);
+      const res = await fetch(`/api/feed?page=${next}`);
       if (!res.ok) return;
       const data = await res.json();
-      setFeed((prev) => (replace ? data.feed : [...prev, ...data.feed]));
+      setPages((prev) => {
+        const updated = [...prev];
+        updated[next] = data.feed;
+        return updated;
+      });
+      setPageIndex(next);
       setHasMore(data.has_more);
     } finally {
-      setLoading(false);
       setLoadingMore(false);
-      setRefreshing(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [hasMore, loadingMore, pageIndex]);
 
-  // Initial load
-  useEffect(() => { loadFeed(0, true); }, [loadFeed]);
-
-  // Infinite scroll â€” fire when sentinel enters viewport
-  useEffect(() => {
-    if (inView && hasMore && !loading && !loadingMore) {
-      const next = page + 1;
-      setPage(next);
-      setLoadingMore(true);
-      loadFeed(next);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView]);
+  // Trigger infinite scroll when sentinel enters viewport
+  if (inView && hasMore && !isLoading && !loadingMore && feed.length > 0) {
+    loadNextPage();
+  }
 
   const refresh = () => {
-    setRefreshing(true);
-    setPage(0);
+    setPages([]);
+    setPageIndex(0);
     setHasMore(true);
-    loadFeed(0, true);
+    mutatePage0();
   };
 
-  // Cheers polling â€” refetch cheers counts every 30s when tab is visible
-  const refetchCheers = useCallback(async () => {
-    if (document.visibilityState !== "visible" || feed.length === 0) return;
-    try {
-      const res = await fetch("/api/feed?page=0");
-      if (!res.ok) return;
-      const data = await res.json();
-      // Merge only cheers_count + user_has_cheered from fresh data, preserve local state otherwise
-      setFeed((prev) =>
-        prev.map((item) => {
-          const fresh = (data.feed as FeedItem[]).find((f) => f.id === item.id);
-          if (!fresh) return item;
-          return { ...item, cheers_count: fresh.cheers_count, user_has_cheered: item.user_has_cheered };
-        })
-      );
-    } catch {}
-  }, [feed.length]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") refetchCheers();
-    }, 30000);
-    const onVisible = () => refetchCheers();
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [refetchCheers]);
+  const loading = isLoading && pages.length === 0;
 
   return (
     <div className="dv-page bg-background">
-      {/* Nav */}
       <div className="dv-nav flex items-center justify-between px-4 py-3">
         <span className="text-[14px] font-medium text-foreground">Friends</span>
         <div className="flex items-center gap-3">
@@ -160,24 +146,34 @@ export default function FeedPage() {
             size="icon-sm"
             onClick={refresh}
             aria-label="Refresh feed"
-            className={cn("text-muted-foreground", refreshing && "opacity-50")}
+            className={cn("text-muted-foreground", isLoading && "opacity-50")}
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M15 9A6 6 0 1 1 9 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              <path d="M9 3l3-3-3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M15 9A6 6 0 1 1 9 3"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M9 3l3-3-3-3"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </Button>
           <DrunkvaLogo />
         </div>
       </div>
 
-      {/* Content */}
       <div className="overflow-y-auto h-[calc(100dvh-120px)]">
         {loading ? (
           <FeedSkeleton />
         ) : feed.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <span className="text-4xl">ðŸº</span>
+            <div className="text-4xl" aria-hidden="true">🍺</div>
             <div className="text-[15px] font-medium text-foreground">No sessions yet</div>
             <div className="text-[13px] text-muted-foreground text-center px-8">
               Follow friends to see their sessions here
@@ -199,11 +195,12 @@ export default function FeedPage() {
                 onSessionClick={(id) => router.push(`/session/${id}`)}
               />
             ))}
-            {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-1" />
             {loadingMore && <LoadingSpinner />}
             {!hasMore && feed.length > 0 && (
-              <p className="text-center text-[12px] text-muted-foreground py-6">You're all caught up ðŸº</p>
+              <p className="text-center text-[12px] text-muted-foreground py-6">
+                {"You're all caught up"}
+              </p>
             )}
           </>
         )}
