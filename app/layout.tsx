@@ -77,7 +77,7 @@ export default function RootLayout({
           - The inner div constrains content to 390px and centers it.
         */}
         <div className="dark min-h-screen bg-background flex flex-col items-center">
-          <div className="w-full max-w-[390px] flex flex-col min-h-screen relative bg-background overflow-x-clip">
+          <div className="w-full max-w-[var(--container-w)] flex flex-col min-h-screen relative bg-background overflow-x-clip">
             <Providers>
               {children}
               <InstallPrompt />

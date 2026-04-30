@@ -177,7 +177,7 @@ export default function EditProfilePage() {
 
       {/* Delete Survey Modal */}
       {isDeleting && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-5">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[var(--z-modal)] flex items-center justify-center p-5">
           <div className="bg-card border border-border w-full max-w-sm rounded-xl p-5 shadow-lg flex flex-col gap-4">
             <div>
               <h2 className="text-lg font-semibold text-foreground">Why are you leaving?</h2>

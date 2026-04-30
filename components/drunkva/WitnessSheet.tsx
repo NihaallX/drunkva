@@ -99,7 +99,7 @@ export function WitnessSheet({ open, sessionId, onClose, onDone }: WitnessSheetP
       {/* Sheet */}
       <div
         className={cn(
-          "fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[390px]",
+          "fixed bottom-0 left-1/2 -translate-x-1/2 z-[var(--z-overlay)] w-full max-w-[var(--container-w)]",
           "bg-card border-t border-border rounded-t-2xl",
           "transition-transform duration-300",
           open ? "translate-y-0" : "translate-y-full"
