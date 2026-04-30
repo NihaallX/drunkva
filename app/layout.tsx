@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Space_Grotesk, Barlow_Condensed } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -19,6 +19,14 @@ const inter = Inter({
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-heading",
+  display: "swap",
+});
+
+// Condensed display font for share overlay stats — matches Strava's athletic aesthetic
+const barlowCondensed = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -83,7 +91,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
         <link rel="dns-prefetch" href="https://img.clerk.com" />
       </head>
-      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} ${barlowCondensed.variable} font-sans`}>
         {/*
           Dark shell + centering container.
           - `.dark` here activates Tailwind dark: variants for all descendants.
