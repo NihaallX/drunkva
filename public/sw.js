@@ -1,5 +1,8 @@
-// Drunkva Service Worker v2
-const CACHE_NAME = "drunkva-v2";
+// Drunkva Service Worker v3
+const CACHE_NAME = "drunkva-v3";
+// Separate cache for Next.js static chunks — these are content-hashed and
+// immutable, so we can serve them from cache indefinitely and revalidate lazily.
+const CHUNK_CACHE_NAME = "drunkva-chunks-v3";
 
 // Only cache truly static/public assets — NOT auth-protected pages
 const STATIC_ASSETS = [
@@ -20,10 +23,11 @@ self.addEventListener("install", (event) => {
 
 // ─── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
+  const VALID_CACHES = new Set([CACHE_NAME, CHUNK_CACHE_NAME]);
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        keys.filter((k) => !VALID_CACHES.has(k)).map((k) => caches.delete(k))
       )
     )
   );
@@ -36,16 +40,38 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   // Never intercept: navigation requests (page loads), cross-origin,
-  // Next.js internals, API calls, or Clerk requests
+  // API calls, or Clerk requests
   if (
     request.mode === "navigate" ||
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
-    url.pathname.startsWith("/_next/") ||
     url.pathname.startsWith("/api/") ||
     url.hostname !== self.location.hostname
   ) {
     return; // Let the browser/network handle it natively
+  }
+
+  // Next.js static chunks — content-hashed filenames → immutable → cache-first
+  // with background revalidation (stale-while-revalidate).
+  // This covers JS, CSS, and media from /_next/static/.
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      caches.open(CHUNK_CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(request);
+        // Serve from cache immediately, then revalidate in background
+        const fetchPromise = fetch(request).then((networkRes) => {
+          if (networkRes.ok) cache.put(request, networkRes.clone());
+          return networkRes;
+        });
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // /_next/image — network first (dynamic transformations, not immutable)
+  if (url.pathname.startsWith("/_next/image")) {
+    return; // network only
   }
 
   // For static icon/manifest assets: cache-first

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
@@ -10,15 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDuration } from "@/lib/confidence";
-import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
-import { useUser as useClerkUser } from "@clerk/nextjs";
 
-let useUser: () => { user: typeof MOCK_USER | null | any };
-if (clerkEnabled) {
-  useUser = useClerkUser;
-} else {
-  useUser = () => ({ user: MOCK_USER });
-}
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface ProfileData {
   user: { id: string; real_name: string; alias: string | null; avatar_url: string | null };
@@ -42,10 +35,14 @@ interface SessionSummary {
 }
 
 function getInitials(name: string): string {
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
-// ─── Session mini card ────────────────────────────────────────────────────────
 function SessionMiniCard({ session, onClick }: { session: SessionSummary; onClick: () => void }) {
   return (
     <Card
@@ -58,14 +55,14 @@ function SessionMiniCard({ session, onClick }: { session: SessionSummary; onClic
         <div className="text-[11px] text-muted-foreground mb-1.5">{session.peak_confidence_pct}% peak</div>
         <div className="text-[11px] text-muted-foreground/60">{session.venue_name ?? "No venue"}</div>
         <div className="text-[10px] text-muted-foreground/50 mt-0.5">
-          {new Date(session.start_time).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} · {session.drink_count} drinks
+          {new Date(session.start_time).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} ·{" "}
+          {session.drink_count} drinks
         </div>
       </CardContent>
     </Card>
   );
 }
 
-// ─── Profile skeleton ─────────────────────────────────────────────────────────
 function ProfileSkeleton() {
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -85,21 +82,24 @@ function ProfileSkeleton() {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
-  const { user: clerkUser } = useUser();
   const router = useRouter();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
 
-  useEffect(() => {
-    fetch("/api/profile").then((r) => r.json()).then(setProfile);
-    fetch("/api/sessions").then((r) => r.json()).then((d) => setSessions(d.sessions ?? []));
-  }, []);
+  // SWR: cached, deduped, revalidates on tab focus automatically.
+  // Back-navigation serves from cache instantly — no spinner on revisit.
+  const { data: profile } = useSWR<ProfileData>("/api/profile", fetcher, {
+    revalidateOnFocus: true,
+    dedupingInterval: 30_000,
+  });
+  const { data: sessionsData } = useSWR<{ sessions: SessionSummary[] }>("/api/sessions", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
+
+  const sessions = sessionsData?.sessions ?? [];
 
   return (
     <div className="dv-page bg-background">
-      {/* Nav */}
       <div className="dv-nav flex items-center justify-between px-4 py-3">
         <DrunkvaLogo />
         <Button
@@ -158,15 +158,21 @@ export default function ProfilePage() {
               { label: "Fav drink", value: profile.stats.favourite_drink ?? "—", capitalize: true },
               {
                 label: "Fastest beer",
-                value: profile.stats.fastest_beer_seconds != null
-                  ? formatDuration(profile.stats.fastest_beer_seconds)
-                  : "—",
+                value:
+                  profile.stats.fastest_beer_seconds != null
+                    ? formatDuration(profile.stats.fastest_beer_seconds)
+                    : "—",
               },
             ].map((s) => (
               <Card key={s.label} className="bg-card border-border py-0 gap-0">
                 <CardContent className="px-3 py-2.5">
                   <div className="dv-stat-label">{s.label}</div>
-                  <div className={cn("text-lg font-heading font-medium text-foreground mt-0.5", s.capitalize && "capitalize")}>
+                  <div
+                    className={cn(
+                      "text-lg font-heading font-medium text-foreground mt-0.5",
+                      s.capitalize && "capitalize"
+                    )}
+                  >
                     {s.value}
                   </div>
                 </CardContent>
@@ -175,18 +181,20 @@ export default function ProfilePage() {
           </div>
 
           {/* Past sessions */}
-          <div>
-            <div className="dv-stat-label mb-2">Past sessions</div>
-            <div className="grid grid-cols-2 gap-2">
-              {sessions.map((s) => (
-                <SessionMiniCard
-                  key={s.id}
-                  session={s}
-                  onClick={() => router.push(`/session/${s.id}`)}
-                />
-              ))}
+          {sessions.length > 0 && (
+            <div>
+              <div className="dv-stat-label mb-2">Past sessions</div>
+              <div className="grid grid-cols-2 gap-2">
+                {sessions.map((s) => (
+                  <SessionMiniCard
+                    key={s.id}
+                    session={s}
+                    onClick={() => router.push(`/session/${s.id}`)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

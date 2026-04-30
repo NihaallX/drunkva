@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Timer } from "lucide-react";
+import { memo, useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -13,7 +12,7 @@ interface QuickLogBarProps {
 
 
 
-function DrinkButton({
+const DrinkButton = memo(function DrinkButton({
   id,
   emoji,
   label,
@@ -60,7 +59,7 @@ function DrinkButton({
       <span className="dv-drink-label">{label}</span>
     </div>
   );
-}
+});
 
 export function QuickLogBar({ onLog, onOpenExtras, disabled }: QuickLogBarProps) {
   return (

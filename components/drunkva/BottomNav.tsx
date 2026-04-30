@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +64,7 @@ const tabs = [
   },
 ];
 
-export function BottomNav() {
+function BottomNavInner() {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -95,3 +96,7 @@ export function BottomNav() {
     </nav>
   );
 }
+
+// BottomNav only depends on pathname — memoizing it prevents re-renders
+// triggered by parent state changes (e.g. drink logs on the session page).
+export const BottomNav = memo(BottomNavInner);

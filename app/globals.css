@@ -68,6 +68,37 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 9999px;
+
+  /* ── Container ───────────────────────────────────────────────────────────── */
+  /* Single source of truth for the 390px app shell width.                      */
+  /* Usage in Tailwind: max-w-[var(--container-w)]                              */
+  --container-w: 390px;
+
+  /* ── Spacing scale ───────────────────────────────────────────────────────── */
+  /* Use these to keep vertical rhythm consistent across all screens.           */
+  /* xs = tight internal padding, sm = card padding, md = section gap,          */
+  /* lg = between major blocks, xl = page-level top/bottom breathing room.      */
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* ── Z-index scale ───────────────────────────────────────────────────────── */
+  /* Named layers prevent silent stacking bugs when adding new overlapping UI.  */
+  /*                                                                             */
+  /*  base      (0)   — default document flow                                   */
+  /*  sticky   (10)   — sticky headers / section anchors                        */
+  /*  nav      (20)   — bottom nav bar (always visible above content)           */
+  /*  overlay  (30)   — sheets, drawers, toasts that sit above nav              */
+  /*  modal    (40)   — full-screen modals / dialogs above sheets               */
+  /*  top      (50)   — maximum — loading spinners, critical alerts             */
+  --z-base:    0;
+  --z-sticky:  10;
+  --z-nav:     20;
+  --z-overlay: 30;
+  --z-modal:   40;
+  --z-top:     50;
 }
 
 @theme inline {
@@ -312,7 +343,7 @@
   -webkit-backdrop-filter: blur(12px);
   display: flex;
   padding-bottom: env(safe-area-inset-bottom);
-  z-index: 100;
+  z-index: var(--z-nav);
 }
 
 /* Quick log drink button */
@@ -385,7 +416,7 @@
 .dv-nav {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-sticky);
   background: rgba(17, 17, 17, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);

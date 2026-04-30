@@ -8,16 +8,18 @@ import { InstallPrompt } from "@/components/drunkva/InstallPrompt";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
-// Body font
+// Body font — display: swap prevents invisible text while font loads
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
 });
 
-// Heading / display font â€” athletic, geometric, matches Drunkva's brand
+// Heading / display font — athletic, geometric, matches Drunkva's brand
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-heading",
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -29,7 +31,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Drunkva â€” Track Every Session",
+  title: "Drunkva — Track Every Session",
   description:
     "The social drinking session tracker. Log drinks, track your confidence curve, share your night.",
   manifest: "/manifest.webmanifest",
@@ -52,7 +54,7 @@ const clerkEnabled = process.env.NEXT_PUBLIC_CLERK_ENABLED === "true";
 
 function Providers({ children }: { children: React.ReactNode }) {
   return (
-    // ThemeProvider still manages theme context â€” but we suppress forcedTheme
+    // ThemeProvider still manages theme context — but we suppress forcedTheme
     // to stop next-themes injecting style={{color-scheme:"dark"}} on <html>.
     // Dark mode is handled entirely via CSS (color-scheme: dark in :root).
     <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
@@ -66,9 +68,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const content = (
-    // <html> has NO className and NO inline style â€” avoids all SSR/client hydration mismatches.
+    // <html> has NO className and NO inline style — avoids all SSR/client hydration mismatches.
     // Dark mode is set globally via `color-scheme: dark` in :root (globals.css).
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to external origins hit early in the page lifecycle.
+            Establishing the TCP+TLS handshake before JS runs saves 200-400ms
+            on first auth check and avatar image loads. */}
+        <link rel="preconnect" href="https://clerk.accounts.dev" />
+        <link rel="preconnect" href="https://img.clerk.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* DNS-prefetch as a fallback for browsers that don't support preconnect */}
+        <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
+        <link rel="dns-prefetch" href="https://img.clerk.com" />
+      </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}>
         {/*
           Dark shell + centering container.
@@ -77,7 +91,7 @@ export default function RootLayout({
           - The inner div constrains content to 390px and centers it.
         */}
         <div className="dark min-h-screen bg-background flex flex-col items-center">
-          <div className="w-full max-w-[390px] flex flex-col min-h-screen relative bg-background overflow-x-clip">
+          <div className="w-full max-w-[var(--container-w)] flex flex-col min-h-screen relative bg-background overflow-x-clip">
             <Providers>
               {children}
               <InstallPrompt />

@@ -80,11 +80,11 @@ export function InstallPrompt() {
       <DrawerContent
         className={cn(
           "bg-card border-border",
-          "max-w-[390px] mx-auto",
+          "max-w-[var(--container-w)] mx-auto",
           // Pad below bottom nav so Install button is never hidden behind it
           "pb-[calc(64px+env(safe-area-inset-bottom))]",
-          // Sit above bottom nav; bottom nav remains visible and interactive
-          "z-[200]"
+          // Sit above bottom nav (--z-nav); bottom nav remains visible and interactive
+          "z-[var(--z-modal)]"
         )}
       >
         <DrawerHeader className="text-left">

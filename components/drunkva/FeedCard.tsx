@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Avatar,
@@ -51,7 +51,7 @@ function getInitials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
-export function FeedCard({ session, user, currentUserId, onSessionClick }: FeedCardProps) {
+function FeedCardInner({ session, user, currentUserId, onSessionClick }: FeedCardProps) {
   const [cheered, setCheered] = useState(session.user_has_cheered);
   const [cheersCount, setCheersCount] = useState(Number(session.cheers_count));
   const [loading, setLoading] = useState(false);
@@ -174,3 +174,19 @@ export function FeedCard({ session, user, currentUserId, onSessionClick }: FeedC
     </div>
   );
 }
+
+// Only re-render when the session's identity fields change.
+// Cheers optimistic updates live in local state, so the parent polling
+// its own cheers_count does not need to trigger a re-render here.
+export const FeedCard = memo(FeedCardInner, (prev, next) => {
+  return (
+    prev.session.id === next.session.id &&
+    prev.session.peak_stage === next.session.peak_stage &&
+    prev.session.peak_confidence_pct === next.session.peak_confidence_pct &&
+    prev.session.session_title === next.session.session_title &&
+    prev.session.drink_count === next.session.drink_count &&
+    prev.session.fastest_beer_seconds === next.session.fastest_beer_seconds &&
+    prev.session.is_verified === next.session.is_verified &&
+    prev.currentUserId === next.currentUserId
+  );
+});

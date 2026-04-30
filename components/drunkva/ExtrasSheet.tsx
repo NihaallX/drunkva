@@ -99,11 +99,11 @@ export function ExtrasSheet({
         className={cn(
           "bg-card border-border",
           // Constrain to app width, centered
-          "max-w-[390px] mx-auto",
+          "max-w-[var(--container-w)] mx-auto",
           // Clear the bottom nav (64px) + safe area — content is never hidden behind nav
           "pb-[calc(64px+env(safe-area-inset-bottom))]",
-          // Ensure drawer sits above bottom nav (z-100)
-          "z-[200]"
+          // Ensure drawer sits above bottom nav (--z-nav) and overlays (--z-overlay)
+          "z-[var(--z-modal)]"
         )}
       >
         <DrawerHeader className="text-left">
