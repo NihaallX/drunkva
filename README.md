@@ -28,11 +28,9 @@ Drunkva is a mobile-first, social session tracker for your nights out. You log d
   <img src="docs/screenshots/session.png" alt="Live Session" width="180" />
   &nbsp;&nbsp;&nbsp;
   <img src="docs/screenshots/share-card.png" alt="Share Card" width="180" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshots/feed.png" alt="Social Feed" width="180" />
 </p>
 <p align="center">
-  <em>Live Session &nbsp;&nbsp;&nbsp; Share Card &nbsp;&nbsp;&nbsp; Social Feed</em>
+  <em>Live Session &nbsp;&nbsp;&nbsp; Share Card</em>
 </p>
 
 ## Features
