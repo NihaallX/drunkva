@@ -91,8 +91,8 @@ export function InstallPrompt() {
           "max-w-[var(--container-w)] mx-auto",
           // Pad below bottom nav so Install button is never hidden behind it
           "pb-[calc(64px+env(safe-area-inset-bottom))]",
-          // Sit above bottom nav (--z-nav); bottom nav remains visible and interactive
-          "z-[var(--z-modal)]"
+          // Ensure dialog appears above the overlay and all nav elements
+          "z-[var(--z-top)]"
         )}
       >
         <DrawerHeader className="text-left">
