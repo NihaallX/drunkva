@@ -158,6 +158,13 @@ export function MorningCardInner() {
   const buildExportBlob = async (): Promise<Blob> => {
     const overlayEl = overlayRef.current;
     if (!overlayEl) throw new Error("overlay not mounted");
+    const previewEl = previewRef.current;
+    const captureWidth = previewEl?.offsetWidth ?? overlayEl.offsetWidth ?? overlayEl.scrollWidth ?? 390;
+    const captureHeight = previewEl?.offsetHeight ?? overlayEl.offsetHeight ?? overlayEl.scrollHeight ?? 693;
+
+    if (!Number.isFinite(captureWidth) || captureWidth <= 0 || !Number.isFinite(captureHeight) || captureHeight <= 0) {
+      throw new Error("overlay has no measurable size");
+    }
 
     const canvas = document.createElement("canvas");
     canvas.width = EXPORT_W;
@@ -212,32 +219,39 @@ export function MorningCardInner() {
     // natural (un-scaled) dimensions, giving html2canvas the correct scale factor.
     const parent = overlayEl.parentElement as HTMLElement | null;
     const savedTransform = parent?.style.transform ?? "";
-    if (parent) parent.style.transform = "none";
+    const savedWidth = overlayEl.style.width;
+    const savedHeight = overlayEl.style.height;
+    const savedMinHeight = overlayEl.style.minHeight;
+    overlayEl.style.width = `${captureWidth}px`;
+    overlayEl.style.height = `${captureHeight}px`;
+    overlayEl.style.minHeight = `${captureHeight}px`;
 
-    // Use scrollWidth/scrollHeight to get the content box size without transform
-    const naturalW = overlayEl.scrollWidth || overlayEl.offsetWidth;
-    const naturalH = overlayEl.scrollHeight || overlayEl.offsetHeight;
-    const captureScale = EXPORT_W / naturalW;
+    try {
+      if (parent) parent.style.transform = "none";
 
-    const html2canvas = (await import("html2canvas")).default;
-    const overlayCanvas = await html2canvas(overlayEl, {
-      scale: captureScale,
-      width: naturalW,
-      height: naturalH,
-      backgroundColor: null,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-    });
+      const captureScale = EXPORT_W / captureWidth;
+      const html2canvas = (await import("html2canvas")).default;
+      const overlayCanvas = await html2canvas(overlayEl, {
+        scale: captureScale,
+        width: captureWidth,
+        height: captureHeight,
+        backgroundColor: null,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+      });
 
-    // Restore transform
-    if (parent) parent.style.transform = savedTransform;
-
-    // Step 4 — composite at drag position
-    const exportedOverlayH = naturalH * captureScale * overlayScale;
-    const overlayYPx = overlayY * EXPORT_H;
-    const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
-    ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, exportedOverlayH);
+      // Step 4 — composite at drag position
+      const exportedOverlayH = captureHeight * captureScale * overlayScale;
+      const overlayYPx = overlayY * EXPORT_H;
+      const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
+      ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, exportedOverlayH);
+    } finally {
+      if (parent) parent.style.transform = savedTransform;
+      overlayEl.style.width = savedWidth;
+      overlayEl.style.height = savedHeight;
+      overlayEl.style.minHeight = savedMinHeight;
+    }
 
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
@@ -253,7 +267,8 @@ export function MorningCardInner() {
     try {
       const blob = await buildExportBlob();
       const file = new File([blob], "drunkva-session.png", { type: "image/png" });
-      if (navigator.share && navigator.canShare({ files: [file] })) {
+      const canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+      if (typeof navigator.share === "function" && canShareFiles) {
         await navigator.share({ files: [file], title: "My Drunkva session" });
         if (!witnessShared) setWitnessSheetOpen(true);
       } else {
