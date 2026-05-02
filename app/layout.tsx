@@ -94,12 +94,15 @@ export default function RootLayout({
       <script
         dangerouslySetInnerHTML={{
           __html: `// Prevent automatic geolocation prompts from cached/old bundles.
-;(function(){try{if(typeof navigator!=='undefined'&&navigator.geolocation){
-  const noopError = function(cb){ if(typeof cb==='function') cb({code:1,message:'Geolocation disabled by app'}); };
-  try{ navigator.geolocation.getCurrentPosition = function(success, error){ return noopError(error); }; }catch(e){}
-  try{ navigator.geolocation.watchPosition = function(){ return -1; }; }catch(e){}
-}}
-}catch(e){} })();`,
+;(function(){
+  try {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      const noopError = function(cb){ if (typeof cb === 'function') cb({ code: 1, message: 'Geolocation disabled by app' }); };
+      try { navigator.geolocation.getCurrentPosition = function(success, error){ return noopError(error); }; } catch (e) {}
+      try { navigator.geolocation.watchPosition = function(){ return -1; }; } catch (e) {}
+    }
+  } catch (e) {}
+})();`,
         }}
       />
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${barlowCondensed.variable} font-sans`}>

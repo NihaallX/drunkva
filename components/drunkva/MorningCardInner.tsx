@@ -247,6 +247,28 @@ export function MorningCardInner() {
             const originalRoot = overlayEl;
             const clonedRoot = doc.querySelector('[data-html2canvas-clone-root]') || doc.body;
 
+            const colorCanvas = doc.createElement("canvas");
+            const colorCtx = colorCanvas.getContext("2d");
+            const normalizeColor = (value: string) => {
+              if (!colorCtx) return value;
+              const prev = colorCtx.fillStyle;
+              colorCtx.fillStyle = "#000";
+              colorCtx.fillStyle = value;
+              const out = colorCtx.fillStyle;
+              colorCtx.fillStyle = prev;
+              return out;
+            };
+
+            const colorProps = new Set([
+              "color",
+              "background-color",
+              "border-top-color",
+              "border-right-color",
+              "border-bottom-color",
+              "border-left-color",
+              "outline-color",
+            ]);
+
             // Gather node lists for original and clone in the same traversal order
             const origNodes: Element[] = [];
             const cloneNodes: Element[] = [];
@@ -273,13 +295,13 @@ export function MorningCardInner() {
                   "color",
                   "background-color",
                   "background-image",
-                  "border-color",
                   "border-top-color",
                   "border-right-color",
                   "border-bottom-color",
                   "border-left-color",
                   "box-shadow",
                   "text-shadow",
+                  "outline-color",
                   "opacity",
                 ];
                 for (const prop of props) {
@@ -290,8 +312,18 @@ export function MorningCardInner() {
                   // possible (background-color) or skip.
                   if (/oklab|color-mix/i.test(val)) {
                     if (prop === "background-image") {
+                      (c as HTMLElement).style.setProperty("background-image", "none");
                       const bg = cs.getPropertyValue("background-color");
-                      if (bg) (c as HTMLElement).style.setProperty("background-color", bg);
+                      if (bg) (c as HTMLElement).style.setProperty("background-color", normalizeColor(bg));
+                      continue;
+                    }
+                    if (prop === "box-shadow" || prop === "text-shadow") {
+                      (c as HTMLElement).style.setProperty(prop, "none");
+                      continue;
+                    }
+                    if (colorProps.has(prop)) {
+                      (c as HTMLElement).style.setProperty(prop, normalizeColor(val));
+                      continue;
                     }
                     continue;
                   }
