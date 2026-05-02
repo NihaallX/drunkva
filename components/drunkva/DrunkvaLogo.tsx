@@ -10,7 +10,6 @@ export function DrunkvaLogo({ className }: { className?: string }) {
       alt="Drunkva"
       height={24}
       width={120}
-      priority
       className={cn("h-6 w-auto object-contain", className)}
     />
   );

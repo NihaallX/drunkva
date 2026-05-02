@@ -18,7 +18,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const VISIT_KEY = "dv-visit-count";
+const PROMPT_SEEN_KEY = "dv-install-prompt-seen";
 
 export function InstallPrompt() {
   // useRef — not useState — to hold the deferred prompt.
@@ -30,25 +30,33 @@ export function InstallPrompt() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Count visits — show on 2nd+ visit
-    const count = parseInt(localStorage.getItem(VISIT_KEY) ?? "0", 10) + 1;
-    localStorage.setItem(VISIT_KEY, String(count));
-
     const handler = (e: Event) => {
-      // Prevent the browser's default mini-infobar from showing
-      e.preventDefault();
-      // Store the event for later — ref survives re-renders
-      deferredPromptRef.current = e as BeforeInstallPromptEvent;
-      
+      if (localStorage.getItem(PROMPT_SEEN_KEY) === "1") {
+        return;
+      }
+
       const isAuthRoute = pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up");
-      if (count >= 2 && !isAuthRoute) {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        ("standalone" in navigator && (navigator as Navigator & { standalone?: boolean }).standalone === true);
+      const shouldShowCustomPrompt = !isAuthRoute && !isStandalone;
+
+      if (shouldShowCustomPrompt) {
+        // Prevent the browser's default mini-infobar only when we are
+        // actually going to present our own install UI.
+        e.preventDefault();
+        // Store the event for later — ref survives re-renders
+        deferredPromptRef.current = e as BeforeInstallPromptEvent;
+        localStorage.setItem(PROMPT_SEEN_KEY, "1");
         setOpen(true);
+      } else {
+        deferredPromptRef.current = null;
       }
     };
 
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
+  }, [pathname]);
 
   // Lock body scroll while prompt is open
   useEffect(() => {
