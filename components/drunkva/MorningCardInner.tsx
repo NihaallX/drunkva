@@ -231,6 +231,9 @@ export function MorningCardInner() {
 
       const captureScale = EXPORT_W / captureWidth;
       const html2canvas = (await import("html2canvas")).default;
+
+      // onclone: copy computed color values into the cloned DOM so html2canvas
+      // doesn't encounter modern color functions (oklab / color-mix) it can't parse.
       const overlayCanvas = await html2canvas(overlayEl, {
         scale: captureScale,
         width: captureWidth,
@@ -239,6 +242,71 @@ export function MorningCardInner() {
         useCORS: true,
         allowTaint: true,
         logging: false,
+        onclone: (doc: Document) => {
+          try {
+            const originalRoot = overlayEl;
+            const clonedRoot = doc.querySelector('[data-html2canvas-clone-root]') || doc.body;
+
+            // Gather node lists for original and clone in the same traversal order
+            const origNodes: Element[] = [];
+            const cloneNodes: Element[] = [];
+
+            (function walk(orig: Element, clone: Element) {
+              origNodes.push(orig);
+              cloneNodes.push(clone);
+              const origChildren = Array.from(orig.children) as Element[];
+              const cloneChildren = Array.from(clone.children) as Element[];
+              for (let i = 0; i < origChildren.length; i++) {
+                if (!cloneChildren[i]) break;
+                walk(origChildren[i], cloneChildren[i]);
+              }
+            })(originalRoot, (clonedRoot as Element));
+
+            for (let i = 0; i < origNodes.length; i++) {
+              const o = origNodes[i];
+              const c = cloneNodes[i];
+              try {
+                const cs = getComputedStyle(o);
+                // Copy a small set of visual properties as inline styles, using
+                // computed values which are typically resolved to rgb/rgba.
+                const props = [
+                  "color",
+                  "background-color",
+                  "background-image",
+                  "border-color",
+                  "border-top-color",
+                  "border-right-color",
+                  "border-bottom-color",
+                  "border-left-color",
+                  "box-shadow",
+                  "text-shadow",
+                  "opacity",
+                ];
+                for (const prop of props) {
+                  const val = cs.getPropertyValue(prop);
+                  if (!val) continue;
+                  // If the computed value still contains oklab/color-mix, avoid
+                  // setting the function string — use a safer fallback where
+                  // possible (background-color) or skip.
+                  if (/oklab|color-mix/i.test(val)) {
+                    if (prop === "background-image") {
+                      const bg = cs.getPropertyValue("background-color");
+                      if (bg) (c as HTMLElement).style.setProperty("background-color", bg);
+                    }
+                    continue;
+                  }
+                  (c as HTMLElement).style.setProperty(prop, val);
+                }
+              } catch (e) {
+                // ignore per-node errors
+              }
+            }
+          } catch (e) {
+            // ignore clone adjustments — we'll still try to capture
+            // and let html2canvas surface any issues if they remain.
+            console.warn("html2canvas onclone patch failed", e);
+          }
+        },
       });
 
       // Step 4 — composite at drag position

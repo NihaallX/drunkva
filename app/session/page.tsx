@@ -73,25 +73,12 @@ export default function SessionPage() {
   const startSession = async () => {
     if (starting) return;
     setStarting(true);
-    let lat: number | null = null;
-    let lng: number | null = null;
-    try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
-      );
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
-    } catch {
-      // location optional
-    }
 
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         venue_name: venueInput || null,
-        location_lat: lat,
-        location_lng: lng,
       }),
     });
 
