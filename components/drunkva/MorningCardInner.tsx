@@ -267,22 +267,35 @@ export function MorningCardInner() {
     try {
       const blob = await buildExportBlob();
       const file = new File([blob], "drunkva-session.png", { type: "image/png" });
-      const canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+      let canShareFiles = false;
+      try {
+        canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+      } catch (e) {
+        // Some browsers throw when calling navigator.canShare with unsupported payloads.
+        canShareFiles = false;
+      }
+
       if (typeof navigator.share === "function" && canShareFiles) {
         await navigator.share({ files: [file], title: "My Drunkva session" });
         if (!witnessShared) setWitnessSheetOpen(true);
       } else {
         // Fallback: treat as download if Web Share not available
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "drunkva-session.png"; a.click();
-        URL.revokeObjectURL(url);
+        try {
+          const a = document.createElement("a");
+          a.href = url; a.download = "drunkva-session.png"; a.click();
+        } finally {
+          // Always revoke even if click throws
+          URL.revokeObjectURL(url);
+        }
         if (!witnessShared) setWitnessSheetOpen(true);
       }
     } catch (err: unknown) {
       // navigator.share throws AbortError if user cancels — don't show error toast
-      const name = (err as Error)?.name;
-      if (name !== "AbortError") showToast("Share failed — try Download instead");
+      const e = err as Error | undefined;
+      const name = e?.name;
+      console.error("Share error:", err);
+      if (name !== "AbortError") showToast(e?.message ?? "Share failed — try Download instead");
     }
     setExporting(false);
   };
@@ -293,10 +306,13 @@ export function MorningCardInner() {
     try {
       const blob = await buildExportBlob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "drunkva-session.png"; a.click();
-      URL.revokeObjectURL(url);
-      showToast("Saved to Downloads");
+      try {
+        const a = document.createElement("a");
+        a.href = url; a.download = "drunkva-session.png"; a.click();
+        showToast("Saved to Downloads");
+      } finally {
+        URL.revokeObjectURL(url);
+      }
       if (!witnessShared) setWitnessSheetOpen(true);
     } catch {
       showToast("Export failed — please try again");
