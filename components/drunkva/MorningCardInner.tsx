@@ -169,267 +169,190 @@ export function MorningCardInner() {
     setLoadingTitle(false);
   };
 
-  // Builds the export canvas and returns the blob.
-  // Step 1: draw photo / gradient background onto a 1080x1920 canvas.
-  // Step 2: draw a gradient scrim for text legibility.
-  // Step 3: capture the stats overlay div with html2canvas at a scale that maps
-  //         the element's natural (un-scaled) width to EXPORT_W.
-  //         We read the element's natural dimensions via a temporary reset of the
-  //         CSS transform — this avoids the broken `offsetWidth` when scale != 1.
-  // Step 4: composite overlay at the dragged y-position.
+  // Builds the export blob by capturing the entire previewRef container
+  // (9:16 div that already composites photo bg + overlay visually) with
+  // html2canvas, then scaling it up to 1080×1920.
   const buildExportBlob = async (): Promise<Blob> => {
-    const overlayEl = overlayRef.current;
-    if (!overlayEl) throw new Error("overlay not mounted");
     const previewEl = previewRef.current;
-    const captureWidth = previewEl?.offsetWidth ?? overlayEl.offsetWidth ?? overlayEl.scrollWidth ?? 390;
-    const captureHeight = previewEl?.offsetHeight ?? overlayEl.offsetHeight ?? overlayEl.scrollHeight ?? 693;
+    if (!previewEl) throw new Error("preview not mounted");
+
+    // Wait for all web fonts to finish loading so html2canvas captures the
+    // correct glyphs and metrics, not a fallback system font.
+    await document.fonts.ready;
+
+    // Snapshot and inline the resolved font-family so the cloned DOM used
+    // by html2canvas inherits the correct value regardless of CSS variable
+    // resolution (--font-sans etc. may not resolve inside the clone).
+    const savedFont = previewEl.style.fontFamily;
+    const resolvedFont = getComputedStyle(previewEl).fontFamily;
+    previewEl.style.fontFamily = resolvedFont;
+
+    const captureWidth = previewEl.offsetWidth;
+    const captureHeight = previewEl.offsetHeight;
 
     if (!Number.isFinite(captureWidth) || captureWidth <= 0 || !Number.isFinite(captureHeight) || captureHeight <= 0) {
-      throw new Error("overlay has no measurable size");
+      throw new Error("preview container has no measurable size");
     }
 
-    const canvas = document.createElement("canvas");
-    canvas.width = EXPORT_W;
-    canvas.height = EXPORT_H;
-    const ctx = canvas.getContext("2d")!;
+    const captureScale = EXPORT_W / captureWidth;
 
-    // Step 1 — background
-    if (userPhoto) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = userPhoto;
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error("Photo failed to load"));
-      });
-      const imgAspect = img.naturalWidth / img.naturalHeight;
-      const canvasAspect = EXPORT_W / EXPORT_H;
-      let drawW: number, drawH: number, drawX: number, drawY: number;
-      if (imgAspect > canvasAspect) {
-        drawH = EXPORT_H; drawW = drawH * imgAspect;
-        drawX = (EXPORT_W - drawW) / 2; drawY = 0;
-      } else {
-        drawW = EXPORT_W; drawH = drawW / imgAspect;
-        drawX = 0; drawY = (EXPORT_H - drawH) / 2;
-      }
-      ctx.drawImage(img, drawX, drawY, drawW, drawH);
-    } else {
-      const gradColors: Record<string, [string, string, string]> = {
-        "dark-blue":   ["#1a1a2e", "#16213e", "#0f3460"],
-        "dark-green":  ["#0a1628", "#0d2137", "#0f3425"],
-        "dark-purple": ["#1a0a2e", "#2a1050", "#1a0a3a"],
+    const html2canvas = (await import("html2canvas")).default;
+
+    // Build a small canvas to normalise modern CSS color functions that
+    // html2canvas cannot parse (oklab, color-mix).
+    const colorCanvas = document.createElement("canvas");
+    const colorCtx = colorCanvas.getContext("2d");
+    const normalizeColor = (value: string) => {
+      if (!colorCtx) return value;
+      const prev = colorCtx.fillStyle;
+      colorCtx.fillStyle = "#000";
+      colorCtx.fillStyle = value;
+      const out = colorCtx.fillStyle as string;
+      colorCtx.fillStyle = prev;
+
+      const oklabMatch = /^oklab\((.+)\)$/i.exec(out);
+      if (!oklabMatch) return out;
+
+      const body = oklabMatch[1];
+      const parts = body.split("/");
+      const lab = parts[0].trim().split(/\s+/);
+      if (lab.length < 3) return out;
+
+      const toNumber = (raw: string) => {
+        const trimmed = raw.trim();
+        if (trimmed.endsWith("%")) return parseFloat(trimmed) / 100;
+        return parseFloat(trimmed);
       };
-      const [c0, c1, c2] = gradColors[selectedBg] ?? gradColors["dark-blue"];
-      const grad = ctx.createLinearGradient(0, 0, EXPORT_W * 0.6, EXPORT_H);
-      grad.addColorStop(0, c0);
-      grad.addColorStop(0.5, c1);
-      grad.addColorStop(1, c2);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-    }
+      const L = toNumber(lab[0]);
+      const a = toNumber(lab[1]);
+      const b = toNumber(lab[2]);
+      if ([L, a, b].some((n) => Number.isNaN(n))) return out;
 
-    // Step 2 — gradient scrim
-    const scrim = ctx.createLinearGradient(0, EXPORT_H * 0.25, 0, EXPORT_H * 0.7);
-    scrim.addColorStop(0, "rgba(0,0,0,0)");
-    scrim.addColorStop(0.5, "rgba(0,0,0,0.3)");
-    scrim.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = scrim;
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+      let alpha = 1;
+      if (parts[1]) alpha = toNumber(parts[1].trim());
+      if (Number.isNaN(alpha)) alpha = 1;
 
-    // Step 3 — capture stats overlay
-    // Temporarily reset the CSS transform so getBoundingClientRect returns the
-    // natural (un-scaled) dimensions, giving html2canvas the correct scale factor.
-    const parent = overlayEl.parentElement as HTMLElement | null;
-    const savedTransform = parent?.style.transform ?? "";
-    const savedWidth = overlayEl.style.width;
-    const savedHeight = overlayEl.style.height;
-    const savedMinHeight = overlayEl.style.minHeight;
-    overlayEl.style.width = `${captureWidth}px`;
-    overlayEl.style.height = `${captureHeight}px`;
-    overlayEl.style.minHeight = `${captureHeight}px`;
+      const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+      const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+      const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+      const lc = l_ * l_ * l_, mc = m_ * m_ * m_, sc = s_ * s_ * s_;
 
-    try {
-      if (parent) parent.style.transform = "none";
+      const linearR = 4.0767416621 * lc - 3.3077115913 * mc + 0.2309699292 * sc;
+      const linearG = -1.2684380046 * lc + 2.6097574011 * mc - 0.3413193965 * sc;
+      const linearB = -0.0041960863 * lc - 0.7034186147 * mc + 1.707614701 * sc;
 
-      overlayEl.setAttribute("data-export-root", "1");
+      const toSrgb = (v: number) => v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+      const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-      const captureScale = EXPORT_W / captureWidth;
-      const html2canvas = (await import("html2canvas")).default;
+      const r = Math.round(clamp01(toSrgb(linearR)) * 255);
+      const g = Math.round(clamp01(toSrgb(linearG)) * 255);
+      const b255 = Math.round(clamp01(toSrgb(linearB)) * 255);
+      const a255 = clamp01(alpha);
 
-      const colorCanvas = document.createElement("canvas");
-      const colorCtx = colorCanvas.getContext("2d");
-      const normalizeColor = (value: string) => {
-        if (!colorCtx) return value;
-        const prev = colorCtx.fillStyle;
-        colorCtx.fillStyle = "#000";
-        colorCtx.fillStyle = value;
-        let out = colorCtx.fillStyle;
-        colorCtx.fillStyle = prev;
+      return a255 < 1
+        ? `rgba(${r}, ${g}, ${b255}, ${Math.round(a255 * 1000) / 1000})`
+        : `rgb(${r}, ${g}, ${b255})`;
+    };
+    const hasUnsupportedColor = (value: string) => /oklab|color-mix/i.test(value);
 
-        const oklabMatch = /^oklab\((.+)\)$/i.exec(out);
-        if (!oklabMatch) return out;
+    previewEl.setAttribute("data-export-root", "1");
 
-        const body = oklabMatch[1];
-        const parts = body.split("/");
-        const lab = parts[0].trim().split(/\s+/);
-        if (lab.length < 3) return out;
+    const renderOptions = {
+      scale: captureScale,
+      width: captureWidth,
+      height: captureHeight,
+      backgroundColor: null,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      onclone: (doc: Document, referenceEl?: HTMLElement) => {
+        try {
+          const originalRoot = previewEl;
+          const clonedRoot = (referenceEl ?? doc.querySelector('[data-export-root="1"]')) as Element | null;
+          if (!clonedRoot) return;
 
-        const toNumber = (raw: string) => {
-          const trimmed = raw.trim();
-          if (trimmed.endsWith("%")) return parseFloat(trimmed) / 100;
-          return parseFloat(trimmed);
-        };
-        const L = toNumber(lab[0]);
-        const a = toNumber(lab[1]);
-        const b = toNumber(lab[2]);
-        if ([L, a, b].some((n) => Number.isNaN(n))) return out;
+          const isColorLike = (prop: string) =>
+            prop.includes("color") || prop === "fill" || prop === "stroke";
 
-        let alpha = 1;
-        if (parts[1]) {
-          const rawAlpha = parts[1].trim();
-          alpha = toNumber(rawAlpha);
-        }
-        if (Number.isNaN(alpha)) alpha = 1;
-
-        const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
-        const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
-        const s_ = L - 0.0894841775 * a - 1.291485548 * b;
-
-        const l = l_ * l_ * l_;
-        const m = m_ * m_ * m_;
-        const s = s_ * s_ * s_;
-
-        const linearR = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-        const linearG = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-        const linearB = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
-
-        const toSrgb = (v: number) =>
-          v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
-        const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-
-        const r = Math.round(clamp01(toSrgb(linearR)) * 255);
-        const g = Math.round(clamp01(toSrgb(linearG)) * 255);
-        const b255 = Math.round(clamp01(toSrgb(linearB)) * 255);
-        const a255 = clamp01(alpha);
-
-        if (a255 < 1) {
-          return `rgba(${r}, ${g}, ${b255}, ${Math.round(a255 * 1000) / 1000})`;
-        }
-        return `rgb(${r}, ${g}, ${b255})`;
-      };
-      const hasUnsupportedColor = (value: string) => /oklab|color-mix/i.test(value);
-
-      // onclone: copy computed color values into the cloned DOM so html2canvas
-      // doesn't encounter modern color functions (oklab / color-mix) it can't parse.
-      let overlayCanvas: HTMLCanvasElement;
-      const renderOptions = {
-        scale: captureScale,
-        width: captureWidth,
-        height: captureHeight,
-        backgroundColor: null,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        onclone: (doc: Document, referenceEl?: HTMLElement) => {
-          try {
-            const originalRoot = overlayEl;
-            const clonedRoot = (referenceEl ?? doc.querySelector('[data-export-root="1"]')) as Element | null;
-            if (!clonedRoot) return;
-
-            const isColorLike = (prop: string) =>
-              prop.includes("color") || prop === "fill" || prop === "stroke";
-
-            // Gather node lists for original and clone in the same traversal order
-            const origNodes: Element[] = [];
-            const cloneNodes: Element[] = [];
-
-            (function walk(orig: Element, clone: Element) {
-              origNodes.push(orig);
-              cloneNodes.push(clone);
-              const origChildren = Array.from(orig.children) as Element[];
-              const cloneChildren = Array.from(clone.children) as Element[];
-              for (let i = 0; i < origChildren.length; i++) {
-                if (!cloneChildren[i]) break;
-                walk(origChildren[i], cloneChildren[i]);
-              }
-            })(originalRoot, (clonedRoot as Element));
-
-            for (let i = 0; i < origNodes.length; i++) {
-              const o = origNodes[i];
-              const c = cloneNodes[i];
-              try {
-                const cs = getComputedStyle(o);
-                // Inline computed styles to avoid html2canvas parsing
-                // unsupported color functions from stylesheets.
-                const props = Array.from(cs);
-                for (const prop of props) {
-                  const val = cs.getPropertyValue(prop);
-                  if (!val) continue;
-
-                  if (hasUnsupportedColor(val)) {
-                    if (prop === "background-image" || prop === "background") {
-                      (c as HTMLElement).style.setProperty(prop, "none");
-                      const bg = cs.getPropertyValue("background-color");
-                      if (bg) (c as HTMLElement).style.setProperty("background-color", normalizeColor(bg));
-                      continue;
-                    }
-
-                    if (prop.includes("shadow") || prop === "filter" || prop === "backdrop-filter") {
-                      (c as HTMLElement).style.setProperty(prop, "none");
-                      continue;
-                    }
-
-                    if (isColorLike(prop)) {
-                      (c as HTMLElement).style.setProperty(prop, normalizeColor(val));
-                      continue;
-                    }
-
-                    // Skip unsupported color functions for non-color props.
-                    continue;
-                  }
-
-                  (c as HTMLElement).style.setProperty(prop, val);
-                }
-              } catch (e) {
-                // ignore per-node errors
-              }
+          const origNodes: Element[] = [];
+          const cloneNodes: Element[] = [];
+          (function walk(orig: Element, clone: Element) {
+            origNodes.push(orig);
+            cloneNodes.push(clone);
+            const origChildren = Array.from(orig.children) as Element[];
+            const cloneChildren = Array.from(clone.children) as Element[];
+            for (let i = 0; i < origChildren.length; i++) {
+              if (!cloneChildren[i]) break;
+              walk(origChildren[i], cloneChildren[i]);
             }
+          })(originalRoot, clonedRoot as Element);
 
-            doc.querySelectorAll("style, link[rel=\"stylesheet\"]").forEach((node) => node.remove());
-          } catch (e) {
-            // ignore clone adjustments — we'll still try to capture
-            // and let html2canvas surface any issues if they remain.
-            console.warn("html2canvas onclone patch failed", e);
+          for (let i = 0; i < origNodes.length; i++) {
+            const o = origNodes[i];
+            const c = cloneNodes[i];
+            try {
+              const cs = getComputedStyle(o);
+              for (const prop of Array.from(cs)) {
+                const val = cs.getPropertyValue(prop);
+                if (!val) continue;
+                // Only patch properties that contain unsupported color functions.
+                // We keep all stylesheets intact so Tailwind classes and
+                // var(--primary) in SVG fill/stroke keep resolving correctly.
+                if (hasUnsupportedColor(val)) {
+                  if (prop === "background-image" || prop === "background") {
+                    (c as HTMLElement).style.setProperty(prop, "none");
+                    const bg = cs.getPropertyValue("background-color");
+                    if (bg) (c as HTMLElement).style.setProperty("background-color", normalizeColor(bg));
+                  } else if (prop.includes("shadow") || prop === "filter" || prop === "backdrop-filter") {
+                    (c as HTMLElement).style.setProperty(prop, "none");
+                  } else if (isColorLike(prop)) {
+                    (c as HTMLElement).style.setProperty(prop, normalizeColor(val));
+                  }
+                  // skip — don't inline unsupported color functions for other props
+                }
+                // Do NOT inline every property: keeping stylesheets active lets
+                // Tailwind classes do their job. We only needed the loop above
+                // to patch oklab/color-mix values that html2canvas can't parse.
+              }
+            } catch {
+              // ignore per-node errors
+            }
           }
-        },
-      };
-
-      try {
-        overlayCanvas = await html2canvas(overlayEl, renderOptions);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        if (/oklab|color-mix/i.test(message)) {
-          overlayCanvas = await html2canvas(overlayEl, { ...renderOptions, foreignObjectRendering: true });
-        } else {
-          throw err;
+          // NOTE: intentionally NOT removing stylesheets here.
+          // Removing them was the root cause of the faint/unstyled export:
+          // Tailwind utility classes and CSS var() in SVG attributes all
+          // depend on the stylesheet being present in the clone document.
+        } catch (e) {
+          console.warn("html2canvas onclone patch failed", e);
         }
-      }
+      },
+    };
 
-      // Step 4 — composite at drag position
-      const exportedOverlayH = captureHeight * captureScale * overlayScale;
-      const overlayYPx = overlayY * EXPORT_H;
-      const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
-      ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, exportedOverlayH);
+    let capturedCanvas: HTMLCanvasElement;
+    try {
+      capturedCanvas = await html2canvas(previewEl, renderOptions);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/oklab|color-mix/i.test(message)) {
+        capturedCanvas = await html2canvas(previewEl, { ...renderOptions, foreignObjectRendering: true });
+      } else {
+        throw err;
+      }
     } finally {
-      overlayEl.removeAttribute("data-export-root");
-      if (parent) parent.style.transform = savedTransform;
-      overlayEl.style.width = savedWidth;
-      overlayEl.style.height = savedHeight;
-      overlayEl.style.minHeight = savedMinHeight;
+      previewEl.removeAttribute("data-export-root");
+      // Restore font-family to avoid leaking the inline override into the live UI.
+      previewEl.style.fontFamily = savedFont;
     }
+
+    // Scale the captured preview up to the full 1080×1920 export canvas.
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = EXPORT_W;
+    exportCanvas.height = EXPORT_H;
+    const ctx = exportCanvas.getContext("2d")!;
+    ctx.drawImage(capturedCanvas, 0, 0, EXPORT_W, EXPORT_H);
 
     return new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => {
+      exportCanvas.toBlob((blob) => {
         if (blob) resolve(blob);
         else reject(new Error("toBlob returned null"));
       }, "image/png");
@@ -445,34 +368,33 @@ export function MorningCardInner() {
       let canShareFiles = false;
       try {
         canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
-      } catch (e) {
-        // Some browsers throw when calling navigator.canShare with unsupported payloads.
+      } catch {
         canShareFiles = false;
       }
+
+      // Clear exporting BEFORE opening the share sheet / witness sheet so the
+      // app unblurs and the popup is fully visible to the user.
+      setExporting(false);
 
       if (typeof navigator.share === "function" && canShareFiles) {
         await navigator.share({ files: [file], title: "My Drunkva session" });
         if (!witnessShared) setWitnessSheetOpen(true);
       } else {
-        // Fallback: treat as download if Web Share not available
         const url = URL.createObjectURL(blob);
         try {
           const a = document.createElement("a");
           a.href = url; a.download = "drunkva-session.png"; a.click();
         } finally {
-          // Always revoke even if click throws
           URL.revokeObjectURL(url);
         }
         if (!witnessShared) setWitnessSheetOpen(true);
       }
     } catch (err: unknown) {
-      // navigator.share throws AbortError if user cancels — don't show error toast
+      setExporting(false);
       const e = err as Error | undefined;
-      const name = e?.name;
+      if (e?.name !== "AbortError") showToast(e?.message ?? "Share failed — try Download instead");
       console.error("Share error:", err);
-      if (name !== "AbortError") showToast(e?.message ?? "Share failed — try Download instead");
     }
-    setExporting(false);
   };
 
   const handleDownload = async () => {
@@ -480,19 +402,21 @@ export function MorningCardInner() {
     setExporting(true);
     try {
       const blob = await buildExportBlob();
+      // Unblur the app before triggering download & opening witness sheet
+      setExporting(false);
       const url = URL.createObjectURL(blob);
       try {
         const a = document.createElement("a");
         a.href = url; a.download = "drunkva-session.png"; a.click();
-        showToast("Saved to Downloads");
+        showToast("Saved to Downloads ✓");
       } finally {
         URL.revokeObjectURL(url);
       }
       if (!witnessShared) setWitnessSheetOpen(true);
     } catch {
+      setExporting(false);
       showToast("Export failed — please try again");
     }
-    setExporting(false);
   };
 
   const bgStyle: React.CSSProperties = userPhoto
@@ -508,6 +432,10 @@ export function MorningCardInner() {
   }
 
   return (
+    // Outer fragment so WitnessSheet can be a sibling of the page div.
+    // This is critical: fixed+backdrop-blur sheets must not be children of a
+    // stacking-context parent (transform, will-change, etc.) or they clip.
+    <>
     <div className="min-h-dvh bg-background pb-8">
       <Toast message={toast.message} visible={toast.visible} />
 
@@ -665,8 +593,12 @@ export function MorningCardInner() {
                 }}
                 onPointerUp={() => { isDragging.current = false; }}
               >
-                {/* Drag handle indicator */}
-                <div className="flex justify-center mb-2 opacity-50 pointer-events-none">
+                {/* Drag handle — hidden from the html2canvas capture via
+                    data-html2canvas-ignore so it never appears in exports. */}
+                <div
+                  data-html2canvas-ignore
+                  className="flex justify-center mb-2 opacity-50 pointer-events-none"
+                >
                   <div className="w-8 h-1 rounded-full bg-white" />
                 </div>
 
@@ -720,20 +652,23 @@ export function MorningCardInner() {
           </div>
         )}
       </div>
-
-      {/* Witness tagging sheet appears after share */}
-      {sessionId && (
-        <WitnessSheet
-          open={witnessSheetOpen}
-          sessionId={sessionId}
-          onClose={() => setWitnessSheetOpen(false)}
-          onDone={(count) => {
-            setWitnessSheetOpen(false);
-            setWitnessShared(true);
-            if (count > 0) showToast(`Tagged ${count} witness${count > 1 ? "es" : ""}`);
-          }}
-        />
-      )}
     </div>
+
+    {/* WitnessSheet rendered OUTSIDE the page div so its fixed backdrop is
+        never clipped by the page's stacking context. This is the fix for the
+        sheet being obscured/unclickable due to z-index + backdrop-filter issues. */}
+    {sessionId && (
+      <WitnessSheet
+        open={witnessSheetOpen}
+        sessionId={sessionId}
+        onClose={() => setWitnessSheetOpen(false)}
+        onDone={(count) => {
+          setWitnessSheetOpen(false);
+          setWitnessShared(true);
+          if (count > 0) showToast(`Tagged ${count} witness${count > 1 ? "es" : ""}`);
+        }}
+      />
+    )}
+    </>
   );
 }
