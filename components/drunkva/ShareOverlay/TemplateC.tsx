@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { reconstructCurve } from "@/lib/confidence";
 import {
   getDominantDrinkLabel,
@@ -122,12 +121,14 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
 
           <div className="h-2" />
 
-          <Image
+          {/* Plain <img> instead of Next.js <Image> — html2canvas captures
+              native img elements reliably. next/image with width=0/height=0
+              renders a 0×0 intrinsic box that html2canvas cannot measure. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/drunkva-wordmark-white.png"
             alt="Drunkva"
-            width={70}
-            height={14}
-            className="h-[14px] w-auto object-contain opacity-80"
+            style={{ height: "14px", width: "auto", opacity: 0.8, objectFit: "contain", display: "block" }}
           />
         </div>
       </div>
