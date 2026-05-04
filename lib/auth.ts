@@ -54,6 +54,17 @@ export async function getOrCreateUser(): Promise<DbUser | null> {
   return created as DbUser;
 }
 
+export async function requireAuth(): Promise<DbUser> {
+  const user = await getOrCreateUser();
+  if (!user) {
+    throw new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return user;
+}
+
 export async function requireOnboarding(): Promise<DbUser> {
   const { redirect } = await import("next/navigation");
   const user = await getOrCreateUser();

@@ -96,11 +96,21 @@ export function useOfflineQueue() {
   // Auto-sync when coming back online
   useEffect(() => {
     const handleOnline = () => syncQueue();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") syncQueue();
+    };
+    const handleFocus = () => syncQueue();
     window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
     // Also try to sync on mount (in case we just loaded with pending items)
     if (navigator.onLine) syncQueue();
     refreshCount();
-    return () => window.removeEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [syncQueue, refreshCount]);
 
   return { enqueue, syncQueue, queueCount, justSynced };

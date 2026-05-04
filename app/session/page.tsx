@@ -95,6 +95,8 @@ export default function SessionPage() {
       if (!session.id || logging) return;
       setLogging(true);
 
+      const wasFirstDrink = session.drinks.length === 0;
+
       const logged_at = new Date().toISOString();
       const tempId = `temp-${Date.now()}`;
       const manualDurationSeconds = options?.manualDurationSeconds;
@@ -159,6 +161,17 @@ export default function SessionPage() {
             }
             return { ...s, drinks: nextDrinks };
           });
+
+          if (
+            wasFirstDrink &&
+            typeof window !== "undefined" &&
+            "Notification" in window &&
+            Notification.permission === "default"
+          ) {
+            setTimeout(() => {
+              Notification.requestPermission().catch(() => {});
+            }, 2000);
+          }
         }
       } catch {
         await enqueue({ type: "LOG_DRINK", payload, endpoint: "/api/drinks", method: "POST" });

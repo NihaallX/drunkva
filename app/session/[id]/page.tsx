@@ -43,6 +43,7 @@ interface SessionDetail {
   peak_stage: string;
   total_duration_seconds: number | null;
   active_duration_seconds: number | null;
+  was_auto_closed: boolean;
   washroom_count: number;
   burp_count: number;
   chakna_level: string;
@@ -304,6 +305,11 @@ export default function SessionDetailPage() {
             </div>
             {session.session_title && (
               <p className="dv-session-title text-sm mb-2">"{session.session_title}"</p>
+            )}
+            {session.was_auto_closed && (
+              <div className="text-[12px] text-muted-foreground">
+                Session auto-closed after inactivity
+              </div>
             )}
           </div>
 

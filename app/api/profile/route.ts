@@ -1,96 +1,114 @@
 import { NextResponse } from "next/server";
-import { getOrCreateUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import sql from "@/lib/db";
 
 // GET /api/profile — own profile + stats, or another user's profile via ?userId=<db_id>
 export async function GET(req: Request) {
-  const currentUser = await getOrCreateUser();
-  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const currentUser = await requireAuth();
 
-  const { searchParams } = new URL(req.url);
-  const targetUserId = searchParams.get("userId");
+    const { searchParams } = new URL(req.url);
+    const targetUserId = searchParams.get("userId");
 
-  // Resolve which user's profile to show
-  let user;
-  if (targetUserId && targetUserId !== currentUser.id) {
-    const [found] = await sql`SELECT * FROM users WHERE id = ${targetUserId}`;
-    user = found ?? null;
-  } else {
-    user = currentUser;
-  }
+    // Resolve which user's profile to show
+    let user;
+    if (targetUserId && targetUserId !== currentUser.id) {
+      const [found] = await sql`SELECT * FROM users WHERE id = ${targetUserId}`;
+      user = found ?? null;
+    } else {
+      user = currentUser;
+    }
 
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const [stats] = await sql`
-    SELECT
-      COUNT(DISTINCT s.id)::int as total_sessions,
-      COALESCE(MAX(s.peak_confidence_pct), 10) as all_time_peak,
-      (SELECT d.type FROM drinks d JOIN sessions ss ON ss.id = d.session_id
-       WHERE ss.user_id = ${user.id}
-       GROUP BY d.type ORDER BY COUNT(*) DESC LIMIT 1) as favourite_drink,
-      (SELECT MIN(d.duration_seconds) FROM drinks d
-       JOIN sessions ss ON ss.id = d.session_id
-       WHERE ss.user_id = ${user.id} AND d.type = 'beer' AND d.duration_seconds IS NOT NULL
-      ) as fastest_beer_seconds
-    FROM sessions s WHERE s.user_id = ${user.id}
-  `;
-
-  const [follows_row] = await sql`SELECT COUNT(*)::int as c FROM follows WHERE follower_id = ${user.id}`;
-  const [followers_row] = await sql`SELECT COUNT(*)::int as c FROM follows WHERE following_id = ${user.id}`;
-
-  let is_following = false;
-  if (currentUser.id !== user.id) {
-    const [f] = await sql`
-      SELECT id FROM follows WHERE follower_id = ${currentUser.id} AND following_id = ${user.id}
+    const [stats] = await sql`
+      SELECT
+        COUNT(DISTINCT s.id)::int as total_sessions,
+        COALESCE(MAX(s.peak_confidence_pct), 10) as all_time_peak,
+        (SELECT d.type FROM drinks d JOIN sessions ss ON ss.id = d.session_id
+         WHERE ss.user_id = ${user.id}
+         GROUP BY d.type ORDER BY COUNT(*) DESC LIMIT 1) as favourite_drink,
+        (SELECT MIN(d.duration_seconds) FROM drinks d
+         JOIN sessions ss ON ss.id = d.session_id
+         WHERE ss.user_id = ${user.id} AND d.type = 'beer' AND d.duration_seconds IS NOT NULL
+        ) as fastest_beer_seconds
+      FROM sessions s WHERE s.user_id = ${user.id}
     `;
-    is_following = !!f;
-  }
 
-  return NextResponse.json({
-    user,
-    stats: {
-      total_sessions: stats?.total_sessions ?? 0,
-      all_time_peak: Number(stats?.all_time_peak ?? 10),
-      favourite_drink: stats?.favourite_drink ?? null,
-      fastest_beer_seconds: stats?.fastest_beer_seconds ?? null,
-    },
-    follows: follows_row?.c ?? 0,
-    followers: followers_row?.c ?? 0,
-    is_following,
-  });
+    const [follows_row] = await sql`SELECT COUNT(*)::int as c FROM follows WHERE follower_id = ${user.id}`;
+    const [followers_row] = await sql`SELECT COUNT(*)::int as c FROM follows WHERE following_id = ${user.id}`;
+
+    let is_following = false;
+    if (currentUser.id !== user.id) {
+      const [f] = await sql`
+        SELECT id FROM follows WHERE follower_id = ${currentUser.id} AND following_id = ${user.id}
+      `;
+      is_following = !!f;
+    }
+
+    return NextResponse.json({
+      user,
+      stats: {
+        total_sessions: stats?.total_sessions ?? 0,
+        all_time_peak: Number(stats?.all_time_peak ?? 10),
+        favourite_drink: stats?.favourite_drink ?? null,
+        fastest_beer_seconds: stats?.fastest_beer_seconds ?? null,
+      },
+      follows: follows_row?.c ?? 0,
+      followers: followers_row?.c ?? 0,
+      is_following,
+    });
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("GET /api/profile failed", err);
+    return NextResponse.json({ error: "Failed to load profile" }, { status: 500 });
+  }
 }
 
 // PATCH /api/profile — update display name, alias (used from onboarding)
 export async function PATCH(req: Request) {
-  const user = await getOrCreateUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await requireAuth();
 
-  const body = await req.json().catch(() => ({}));
-  const { real_name, alias } = body;
-  if (!real_name?.trim()) {
-    return NextResponse.json({ error: "real_name is required" }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const { real_name, alias } = body;
+    const trimmedName = typeof real_name === "string" ? real_name.trim() : "";
+    const trimmedAlias = typeof alias === "string" ? alias.trim() : "";
+
+    if (!trimmedName) {
+      return NextResponse.json({ error: "real_name is required" }, { status: 400 });
+    }
+    if (trimmedName.length > 60) {
+      return NextResponse.json({ error: "Name too long" }, { status: 400 });
+    }
+    if (trimmedAlias && trimmedAlias.length > 30) {
+      return NextResponse.json({ error: "Alias too long" }, { status: 400 });
+    }
+
+    const [updated] = await sql`
+      UPDATE users SET
+        real_name = ${trimmedName},
+        alias = ${trimmedAlias || null},
+        is_onboarded = TRUE
+      WHERE id = ${user.id}
+      RETURNING *
+    `;
+
+    return NextResponse.json({ user: updated });
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("PATCH /api/profile failed", err);
+    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
-
-  const [updated] = await sql`
-    UPDATE users SET
-      real_name = ${real_name.trim()},
-      alias = ${alias?.trim() ?? null},
-      is_onboarded = TRUE
-    WHERE id = ${user.id}
-    RETURNING *
-  `;
-
-  return NextResponse.json({ user: updated });
 }
 
 export async function DELETE(req: Request) {
-  const user = await getOrCreateUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const body = await req.json().catch(() => ({}));
-  const { reason } = body;
-
   try {
+    const user = await requireAuth();
+
+    const body = await req.json().catch(() => ({}));
+    const { reason } = body;
+
     // 1. Delete follows
     await sql`DELETE FROM follows WHERE follower_id = ${user.id} OR following_id = ${user.id}`;
 
@@ -115,7 +133,9 @@ export async function DELETE(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("DELETE /api/profile failed", err);
+    return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 });
   }
 }

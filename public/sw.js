@@ -1,14 +1,15 @@
-// Drunkva Service Worker v3
-const CACHE_NAME = "drunkva-v3";
+// Drunkva Service Worker v4
+const CACHE_NAME = "drunkva-v4";
 // Separate cache for Next.js static chunks — these are content-hashed and
 // immutable, so we can serve them from cache indefinitely and revalidate lazily.
-const CHUNK_CACHE_NAME = "drunkva-chunks-v3";
+const CHUNK_CACHE_NAME = "drunkva-chunks-v4";
 
 // Only cache truly static/public assets — NOT auth-protected pages
 const STATIC_ASSETS = [
   "/icons/drunkva-192.png",
   "/icons/drunkva-512.png",
   "/manifest.json",
+  "/offline.html",
 ];
 
 // ─── Install ──────────────────────────────────────────────────────────────────
@@ -39,10 +40,16 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Never intercept: navigation requests (page loads), cross-origin,
-  // API calls, or Clerk requests
+  // For navigation requests (HTML pages) — always try network first
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() => caches.match("/offline.html"))
+    );
+    return;
+  }
+
+  // Never intercept: cross-origin, API calls, or Clerk requests
   if (
-    request.mode === "navigate" ||
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
     url.pathname.startsWith("/api/") ||

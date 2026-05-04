@@ -114,7 +114,8 @@ export async function GET(req: Request) {
       UPDATE sessions
       SET end_time = ${endTime},
           total_duration_seconds = ${totalDurationSeconds},
-          active_duration_seconds = ${activeDurationSeconds}
+          active_duration_seconds = ${activeDurationSeconds},
+          was_auto_closed = true
       WHERE id = ${session.id}
     `;
 
@@ -157,7 +158,8 @@ export async function GET(req: Request) {
       UPDATE sessions
       SET end_time = ${endTime},
           total_duration_seconds = ${totalDurationSeconds},
-          active_duration_seconds = ${activeDurationSeconds}
+          active_duration_seconds = ${activeDurationSeconds},
+          was_auto_closed = true
       WHERE id = ${session.id}
     `;
 

@@ -168,4 +168,43 @@ await sql`
 `;
 console.log('Created account_deletions table');
 
+// 11. Add was_auto_closed flag to sessions
+await sql`
+  ALTER TABLE sessions
+  ADD COLUMN IF NOT EXISTS was_auto_closed BOOLEAN DEFAULT FALSE
+`;
+console.log('Added was_auto_closed to sessions');
+
+// 12. Add indexes for feed and lookup performance
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_follows_follower
+  ON follows (follower_id, following_id)
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_created
+  ON sessions (user_id, created_at DESC)
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_drinks_session_logged
+  ON drinks (session_id, logged_at)
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_drinks_duration
+  ON drinks (session_id, type, duration_seconds)
+  WHERE duration_seconds IS NOT NULL
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
+  ON push_subscriptions (user_id)
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_cheers_session
+  ON cheers (session_id, from_user_id)
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_session_witnesses_session
+  ON session_witnesses (session_id, confirmed)
+`;
+console.log('Added requested indexes');
+
 console.log('All migrations complete');

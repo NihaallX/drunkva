@@ -3,10 +3,16 @@ import { Webhook } from "svix";
 import sql from "@/lib/db";
 
 export async function POST(req: Request) {
+  const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error("CLERK_WEBHOOK_SECRET is not set — webhook endpoint is disabled");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+  }
+
   const payload = await req.text();
   const headers = Object.fromEntries(req.headers.entries());
 
-  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+  const wh = new Webhook(webhookSecret);
   let event: { type: string; data: { id: string; image_url?: string } };
 
   try {

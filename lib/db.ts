@@ -1,4 +1,7 @@
 import { neon } from "@neondatabase/serverless";
+import { validateEnv } from "@/lib/env";
+
+validateEnv();
 
 const sql = neon(process.env.DATABASE_URL!);
 export default sql;

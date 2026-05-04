@@ -21,7 +21,7 @@ if (
 // Protected: only callable server-side (check secret header)
 export async function POST(req: Request) {
   const secret = req.headers.get("x-internal-secret");
-  if (secret !== process.env.CLERK_SECRET_KEY) {
+  if (secret !== process.env.INTERNAL_API_SECRET) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

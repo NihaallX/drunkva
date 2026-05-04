@@ -31,6 +31,21 @@ interface WindowEntry {
   timestamps: number[];
 }
 
+const MAX_KEYS = 10_000;
+
+function pruneIfNeeded(store: Map<string, WindowEntry>) {
+  if (store.size <= MAX_KEYS) return;
+
+  // Delete oldest 20% of entries
+  const deleteCount = Math.floor(MAX_KEYS * 0.2);
+  const keys = store.keys();
+  for (let i = 0; i < deleteCount; i++) {
+    const key = keys.next().value;
+    if (!key) break;
+    store.delete(key);
+  }
+}
+
 export function createRateLimiter(options: RateLimitOptions) {
   const { windowMs, max } = options;
   const store = new Map<string, WindowEntry>();
@@ -49,6 +64,7 @@ export function createRateLimiter(options: RateLimitOptions) {
 
   return {
     check(key: string): RateLimitResult {
+      pruneIfNeeded(store);
       const now = Date.now();
       const entry = store.get(key) ?? { timestamps: [] };
 

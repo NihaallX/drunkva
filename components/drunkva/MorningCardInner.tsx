@@ -95,6 +95,28 @@ export function MorningCardInner() {
     setTimeout(() => setToast({ visible: false, message: "" }), 3500);
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE_MB = 25;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      showToast("Photo is too large. Please choose a photo under 25MB.");
+      e.currentTarget.value = "";
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setUserPhoto(url);
+  };
+
+  useEffect(() => {
+    if (!userPhoto) return;
+    return () => {
+      URL.revokeObjectURL(userPhoto);
+    };
+  }, [userPhoto]);
+
   useEffect(() => {
     if (!sessionId) return;
     fetch(`/api/sessions/${sessionId}`)
@@ -229,12 +251,78 @@ export function MorningCardInner() {
     try {
       if (parent) parent.style.transform = "none";
 
+      overlayEl.setAttribute("data-export-root", "1");
+
       const captureScale = EXPORT_W / captureWidth;
       const html2canvas = (await import("html2canvas")).default;
 
+      const colorCanvas = document.createElement("canvas");
+      const colorCtx = colorCanvas.getContext("2d");
+      const normalizeColor = (value: string) => {
+        if (!colorCtx) return value;
+        const prev = colorCtx.fillStyle;
+        colorCtx.fillStyle = "#000";
+        colorCtx.fillStyle = value;
+        let out = colorCtx.fillStyle;
+        colorCtx.fillStyle = prev;
+
+        const oklabMatch = /^oklab\((.+)\)$/i.exec(out);
+        if (!oklabMatch) return out;
+
+        const body = oklabMatch[1];
+        const parts = body.split("/");
+        const lab = parts[0].trim().split(/\s+/);
+        if (lab.length < 3) return out;
+
+        const toNumber = (raw: string) => {
+          const trimmed = raw.trim();
+          if (trimmed.endsWith("%")) return parseFloat(trimmed) / 100;
+          return parseFloat(trimmed);
+        };
+        const L = toNumber(lab[0]);
+        const a = toNumber(lab[1]);
+        const b = toNumber(lab[2]);
+        if ([L, a, b].some((n) => Number.isNaN(n))) return out;
+
+        let alpha = 1;
+        if (parts[1]) {
+          const rawAlpha = parts[1].trim();
+          alpha = toNumber(rawAlpha);
+        }
+        if (Number.isNaN(alpha)) alpha = 1;
+
+        const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+        const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+        const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+
+        const l = l_ * l_ * l_;
+        const m = m_ * m_ * m_;
+        const s = s_ * s_ * s_;
+
+        const linearR = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+        const linearG = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+        const linearB = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+
+        const toSrgb = (v: number) =>
+          v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+        const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+        const r = Math.round(clamp01(toSrgb(linearR)) * 255);
+        const g = Math.round(clamp01(toSrgb(linearG)) * 255);
+        const b255 = Math.round(clamp01(toSrgb(linearB)) * 255);
+        const a255 = clamp01(alpha);
+
+        if (a255 < 1) {
+          return `rgba(${r}, ${g}, ${b255}, ${Math.round(a255 * 1000) / 1000})`;
+        }
+        return `rgb(${r}, ${g}, ${b255})`;
+      };
+      const hasUnsupportedColor = (value: string) => /oklab|color-mix/i.test(value);
+
       // onclone: copy computed color values into the cloned DOM so html2canvas
       // doesn't encounter modern color functions (oklab / color-mix) it can't parse.
-      const overlayCanvas = await html2canvas(overlayEl, {
+      let overlayCanvas: HTMLCanvasElement;
+      const renderOptions = {
         scale: captureScale,
         width: captureWidth,
         height: captureHeight,
@@ -242,32 +330,14 @@ export function MorningCardInner() {
         useCORS: true,
         allowTaint: true,
         logging: false,
-        onclone: (doc: Document) => {
+        onclone: (doc: Document, referenceEl?: HTMLElement) => {
           try {
             const originalRoot = overlayEl;
-            const clonedRoot = doc.querySelector('[data-html2canvas-clone-root]') || doc.body;
+            const clonedRoot = (referenceEl ?? doc.querySelector('[data-export-root="1"]')) as Element | null;
+            if (!clonedRoot) return;
 
-            const colorCanvas = doc.createElement("canvas");
-            const colorCtx = colorCanvas.getContext("2d");
-            const normalizeColor = (value: string) => {
-              if (!colorCtx) return value;
-              const prev = colorCtx.fillStyle;
-              colorCtx.fillStyle = "#000";
-              colorCtx.fillStyle = value;
-              const out = colorCtx.fillStyle;
-              colorCtx.fillStyle = prev;
-              return out;
-            };
-
-            const colorProps = new Set([
-              "color",
-              "background-color",
-              "border-top-color",
-              "border-right-color",
-              "border-bottom-color",
-              "border-left-color",
-              "outline-color",
-            ]);
+            const isColorLike = (prop: string) =>
+              prop.includes("color") || prop === "fill" || prop === "stroke";
 
             // Gather node lists for original and clone in the same traversal order
             const origNodes: Element[] = [];
@@ -289,57 +359,61 @@ export function MorningCardInner() {
               const c = cloneNodes[i];
               try {
                 const cs = getComputedStyle(o);
-                // Copy a small set of visual properties as inline styles, using
-                // computed values which are typically resolved to rgb/rgba.
-                const props = [
-                  "color",
-                  "background-color",
-                  "background-image",
-                  "border-top-color",
-                  "border-right-color",
-                  "border-bottom-color",
-                  "border-left-color",
-                  "box-shadow",
-                  "text-shadow",
-                  "outline-color",
-                  "opacity",
-                ];
+                // Inline computed styles to avoid html2canvas parsing
+                // unsupported color functions from stylesheets.
+                const props = Array.from(cs);
                 for (const prop of props) {
                   const val = cs.getPropertyValue(prop);
                   if (!val) continue;
-                  // If the computed value still contains oklab/color-mix, avoid
-                  // setting the function string — use a safer fallback where
-                  // possible (background-color) or skip.
-                  if (/oklab|color-mix/i.test(val)) {
-                    if (prop === "background-image") {
-                      (c as HTMLElement).style.setProperty("background-image", "none");
+
+                  if (hasUnsupportedColor(val)) {
+                    if (prop === "background-image" || prop === "background") {
+                      (c as HTMLElement).style.setProperty(prop, "none");
                       const bg = cs.getPropertyValue("background-color");
                       if (bg) (c as HTMLElement).style.setProperty("background-color", normalizeColor(bg));
                       continue;
                     }
-                    if (prop === "box-shadow" || prop === "text-shadow") {
+
+                    if (prop.includes("shadow") || prop === "filter" || prop === "backdrop-filter") {
                       (c as HTMLElement).style.setProperty(prop, "none");
                       continue;
                     }
-                    if (colorProps.has(prop)) {
+
+                    if (isColorLike(prop)) {
                       (c as HTMLElement).style.setProperty(prop, normalizeColor(val));
                       continue;
                     }
+
+                    // Skip unsupported color functions for non-color props.
                     continue;
                   }
+
                   (c as HTMLElement).style.setProperty(prop, val);
                 }
               } catch (e) {
                 // ignore per-node errors
               }
             }
+
+            doc.querySelectorAll("style, link[rel=\"stylesheet\"]").forEach((node) => node.remove());
           } catch (e) {
             // ignore clone adjustments — we'll still try to capture
             // and let html2canvas surface any issues if they remain.
             console.warn("html2canvas onclone patch failed", e);
           }
         },
-      });
+      };
+
+      try {
+        overlayCanvas = await html2canvas(overlayEl, renderOptions);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (/oklab|color-mix/i.test(message)) {
+          overlayCanvas = await html2canvas(overlayEl, { ...renderOptions, foreignObjectRendering: true });
+        } else {
+          throw err;
+        }
+      }
 
       // Step 4 — composite at drag position
       const exportedOverlayH = captureHeight * captureScale * overlayScale;
@@ -347,6 +421,7 @@ export function MorningCardInner() {
       const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
       ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, exportedOverlayH);
     } finally {
+      overlayEl.removeAttribute("data-export-root");
       if (parent) parent.style.transform = savedTransform;
       overlayEl.style.width = savedWidth;
       overlayEl.style.height = savedHeight;
@@ -544,14 +619,11 @@ export function MorningCardInner() {
                 userPhoto ? "border-2 border-primary" : "border-border"
               )}>
                 <ImagePlus className="size-4 text-muted-foreground" aria-hidden="true" />
-                <input type="file" accept="image/*" className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => setUserPhoto(ev.target?.result as string);
-                    reader.readAsDataURL(file);
-                  }}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelect}
                 />
               </label>
             </div>
@@ -599,7 +671,7 @@ export function MorningCardInner() {
                 </div>
 
                 {/* Stats overlay — transparent bg so canvas compositing works */}
-                <div ref={overlayRef}>
+                <div ref={overlayRef} data-export-overlay="1">
                   {template === "full" ? (
                     <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
                   ) : (
