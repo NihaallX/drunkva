@@ -1,7 +1,5 @@
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 interface TitleParams {
   drink_count: number;
   dominant_drink_type: string;
@@ -11,9 +9,31 @@ interface TitleParams {
 }
 
 export async function generateSessionTitle(params: TitleParams): Promise<string | null> {
+  // Guard: if the API key isn't set, return null gracefully rather than
+  // crashing the Groq constructor and producing an unhandled 500.
+  if (!process.env.GROQ_API_KEY) return null;
+
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
   const hour = params.start_hour;
-  const timeLabel = hour < 12 ? `${hour}am` : hour === 12 ? "noon" : hour < 18 ? `${hour - 12}pm` : hour < 24 ? `${hour - 12}pm` : "midnight";
-  const prompt = `Generate a short 1-sentence caption for a night out. Sound like a real person texting their friend, not an AI. Use casual language, be slightly self-deprecating or chaotic. Under 12 words. No hashtags. No quotes. Stats: ${params.drink_count} ${params.dominant_drink_type}s, peak stage: ${params.peak_stage}, venue: ${params.venue_name}, started at ${timeLabel}. Return only the caption.`;
+  const timeLabel =
+    hour < 6 ? "way too late" :
+    hour < 12 ? `${hour}am` :
+    hour === 12 ? "noon" :
+    hour < 18 ? `${hour - 12}pm` :
+    `${hour - 12}pm`;
+
+  const systemPrompt = `You are a sarcastic, self-aware friend who writes brutally honest captions about nights out.
+Your captions are:
+- Under 12 words, no hashtags, no quotes around the caption
+- Dripping in dry wit, dark humour, or mild regret
+- Written like a real person texting at 2am, not a marketing bot
+- Slightly judgmental but still affectionate
+- Occasionally reference the chaos, the bad decisions, or the "I swear I'm going home after this one"
+- Never start with "I" — mix up the sentence structure
+Return ONLY the caption text. No explanation.`;
+
+  const userPrompt = `Night out stats: ${params.drink_count} ${params.dominant_drink_type}(s), peak stage: ${params.peak_stage}, venue: ${params.venue_name || "some bar"}, kicked off at ${timeLabel}. Write the caption.`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
@@ -22,9 +42,12 @@ export async function generateSessionTitle(params: TitleParams): Promise<string 
     const completion = await groq.chat.completions.create(
       {
         model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 100,
-        temperature: 0.9,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 80,
+        temperature: 1.0,
       },
       { signal: controller.signal }
     );
