@@ -278,6 +278,14 @@ export function MorningCardInner() {
     const previewEl = previewRef.current;
     if (!previewEl) throw new Error("preview not mounted");
 
+    if (!document.getElementById("export-fonts")) {
+      const link = document.createElement("link");
+      link.id = "export-fonts";
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap";
+      document.head.appendChild(link);
+      await new Promise((resolve) => setTimeout(resolve, 800)); // give browser time to parse and fetch font files
+    }
     await document.fonts.ready;
 
     const captureWidth = previewEl.offsetWidth;
@@ -398,10 +406,10 @@ export function MorningCardInner() {
                 if (!val) continue;
                 if (prop === 'font-family') {
                   let cleanVal = val;
-                  if (cleanVal.includes('__Barlow_Condensed')) cleanVal = '"Barlow Condensed", "Inter", sans-serif';
-                  else if (cleanVal.includes('__Space_Grotesk')) cleanVal = '"Space Grotesk", "Inter", sans-serif';
+                  if (cleanVal.includes('__Barlow_Condensed')) cleanVal = '"Barlow Condensed", sans-serif';
+                  else if (cleanVal.includes('__Space_Grotesk')) cleanVal = '"Space Grotesk", sans-serif';
                   else if (cleanVal.includes('__Inter')) cleanVal = '"Inter", sans-serif';
-                  c.style.setProperty(prop, cleanVal);
+                  c.style.setProperty(prop, cleanVal, "important");
                 } else if (hasUnsupportedColor(val)) {
                   if (prop === "background-image" || prop === "background") {
                     c.style.setProperty(prop, "none");
@@ -440,7 +448,7 @@ export function MorningCardInner() {
     const overlayCanvasHeight = (overlayCanvas.height / overlayCanvas.width) * overlayCanvasWidth;
 
     const overlayX = (currentPos.x * EXPORT_W) - (overlayCanvasWidth / 2);
-    const overlayYPx = (currentPos.y * EXPORT_H) - (overlayCanvasHeight * 0.05);
+    const overlayYPx = currentPos.y * EXPORT_H;
 
     ctx.drawImage(
       overlayCanvas,

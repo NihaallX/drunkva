@@ -118,7 +118,7 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
         <img
           src="/drunkva-wordmark-white.png"
           alt="Drunkva"
-          style={{ height: "14px", width: "auto", opacity: 0.8, objectFit: "contain", display: "block" }}
+          style={{ height: "14px", width: "84px", opacity: 0.8, objectFit: "contain", display: "block" }}
         />
       </div>
     </div>
