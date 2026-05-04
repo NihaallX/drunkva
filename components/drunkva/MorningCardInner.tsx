@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, RotateCcw } from "lucide-react";
 // html2canvas is dynamically imported in exportAndShare to keep it out of the initial bundle.
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
@@ -63,11 +63,16 @@ export function MorningCardInner() {
 
   // Refs
   const overlayRef = useRef<HTMLDivElement | null>(null);     // stats overlay only (transparent bg)
+  const wrapperRef = useRef<HTMLDivElement | null>(null);     // the draggable wrapper
   const previewRef = useRef<HTMLDivElement | null>(null);     // the visible preview container
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
+
   const isDragging = useRef(false);
-  const dragStartY = useRef(0);
-  const dragStartOverlayY = useRef(0);
+  const dragStart = useRef({ pointerX: 0, pointerY: 0, posX: 0, posY: 0 });
+  const lastPinchDistance = useRef<number | null>(null);
+  const lastTapTime = useRef(0);
+  const positionRef = useRef({ x: 0.5, y: 0.25 });
+  const scaleRef = useRef(1.0);
 
   // State
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -85,10 +90,108 @@ export function MorningCardInner() {
   const [witnessSheetOpen, setWitnessSheetOpen] = useState(false);
   const [witnessShared, setWitnessShared] = useState(false);
 
-  // Drag to reposition: 0.0 = top, 0.75 = max bottom (to keep overlay visible)
-  const [overlayY, setOverlayY] = useState(0.2);
-  // Scale slider: 0.6 to 1.2, applied to the overlay card
-  const [overlayScale, setOverlayScale] = useState(1.0);
+  // Gestures
+  const [position, setPosition] = useState({ x: 0.5, y: 0.25 });
+  const [scale, setScale] = useState(1.0);
+  const [showHint, setShowHint] = useState(true);
+
+  useEffect(() => { positionRef.current = position; }, [position]);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowHint(false), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastPinchDistance.current = Math.sqrt(dx * dx + dy * dy);
+        isDragging.current = false;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && lastPinchDistance.current !== null) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const newDistance = Math.sqrt(dx * dx + dy * dy);
+        const ratio = newDistance / lastPinchDistance.current;
+        lastPinchDistance.current = newDistance;
+
+        const newScale = Math.max(0.5, Math.min(1.5, scaleRef.current * ratio));
+        scaleRef.current = newScale;
+        
+        if (wrapperRef.current) {
+          wrapperRef.current.style.transform = `translate(-50%, 0) scale(${newScale})`;
+        }
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        lastPinchDistance.current = null;
+        setScale(scaleRef.current);
+      }
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!e.isPrimary) return;
+    setShowHint(false);
+    isDragging.current = true;
+    dragStart.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      posX: positionRef.current.x,
+      posY: positionRef.current.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current || !previewRef.current) return;
+    const container = previewRef.current.getBoundingClientRect();
+    const deltaX = (e.clientX - dragStart.current.pointerX) / (container.width * scaleRef.current);
+    const deltaY = (e.clientY - dragStart.current.pointerY) / (container.height * scaleRef.current);
+    
+    const newX = Math.max(0.1, Math.min(0.9, dragStart.current.posX + deltaX));
+    const newY = Math.max(0.05, Math.min(0.85, dragStart.current.posY + deltaY));
+
+    positionRef.current = { x: newX, y: newY };
+    if (wrapperRef.current) {
+      wrapperRef.current.style.left = `${newX * 100}%`;
+      wrapperRef.current.style.top = `${newY * 100}%`;
+    }
+  };
+
+  const handlePointerUp = () => {
+    isDragging.current = false;
+    setPosition(positionRef.current);
+    
+    const now = Date.now();
+    if (now - lastTapTime.current < 300) {
+      setPosition({ x: 0.5, y: 0.25 });
+      setScale(1.0);
+    }
+    lastTapTime.current = now;
+  };
 
   const showToast = (message: string) => {
     setToast({ visible: true, message });
@@ -169,15 +272,6 @@ export function MorningCardInner() {
     setLoadingTitle(false);
   };
 
-  // Export strategy:
-  // Step 1 — draw background (photo or gradient) manually onto the export canvas.
-  //           html2canvas cannot render blob: URL photo backgrounds, which caused
-  //           the blank white output when we tried to capture previewRef directly.
-  // Step 2 — capture only the stats overlay div (overlayRef) with html2canvas,
-  //           forcing explicit dimensions because templates use absolute inset-0.
-  //           Stylesheets are KEPT in the clone so Tailwind + SVG var() work.
-  //           All computed styles are also inlined so html2canvas sees explicit values.
-  // Step 3 — composite overlay at the user-dragged y-position.
   const buildExportBlob = async (): Promise<Blob> => {
     const overlayEl = overlayRef.current;
     if (!overlayEl) throw new Error("overlay not mounted");
@@ -193,7 +287,6 @@ export function MorningCardInner() {
     }
     const captureScale = EXPORT_W / captureWidth;
 
-    // Step 1: draw background manually
     const exportCanvas = document.createElement("canvas");
     exportCanvas.width = EXPORT_W;
     exportCanvas.height = EXPORT_H;
@@ -237,19 +330,16 @@ export function MorningCardInner() {
     ctx.fillStyle = scrim;
     ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
 
-    // Step 2: capture the stats overlay
+    const currentPos = positionRef.current;
+    const currentScale = scaleRef.current;
+
     const savedFont = overlayEl.style.fontFamily;
     const savedW = overlayEl.style.width;
-    const savedH = overlayEl.style.height;
-    const savedMinH = overlayEl.style.minHeight;
     overlayEl.style.fontFamily = getComputedStyle(overlayEl).fontFamily;
     overlayEl.style.width = `${captureWidth}px`;
-    overlayEl.style.height = `${captureHeight}px`;
-    overlayEl.style.minHeight = `${captureHeight}px`;
     overlayEl.setAttribute("data-export-root", "1");
 
     const html2canvas = (await import("html2canvas")).default;
-
     const colorCanvas = document.createElement("canvas");
     const colorCtx = colorCanvas.getContext("2d");
     const normalizeColor = (value: string) => {
@@ -306,7 +396,13 @@ export function MorningCardInner() {
               for (const prop of Array.from(cs)) {
                 const val = cs.getPropertyValue(prop);
                 if (!val) continue;
-                if (hasUnsupportedColor(val)) {
+                if (prop === 'font-family') {
+                  let cleanVal = val;
+                  if (cleanVal.includes('__Barlow_Condensed')) cleanVal = '"Barlow Condensed", "Inter", sans-serif';
+                  else if (cleanVal.includes('__Space_Grotesk')) cleanVal = '"Space Grotesk", "Inter", sans-serif';
+                  else if (cleanVal.includes('__Inter')) cleanVal = '"Inter", sans-serif';
+                  c.style.setProperty(prop, cleanVal);
+                } else if (hasUnsupportedColor(val)) {
                   if (prop === "background-image" || prop === "background") {
                     c.style.setProperty(prop, "none");
                     const bg = cs.getPropertyValue("background-color");
@@ -317,15 +413,11 @@ export function MorningCardInner() {
                     c.style.setProperty(prop, normalizeColor(val));
                   }
                 } else {
-                  // Inline all resolved values AND keep stylesheets so
-                  // CSS var() in SVG fill/stroke attributes still resolve.
                   c.style.setProperty(prop, val);
                 }
               }
             } catch { /* ignore per-node */ }
           }
-          // Stylesheets intentionally kept — removing them killed Tailwind
-          // and SVG CSS variable resolution in previous iterations.
         } catch (e) { console.warn("html2canvas onclone failed", e); }
       },
     };
@@ -342,22 +434,30 @@ export function MorningCardInner() {
       overlayEl.removeAttribute("data-export-root");
       overlayEl.style.fontFamily = savedFont;
       overlayEl.style.width = savedW;
-      overlayEl.style.height = savedH;
-      overlayEl.style.minHeight = savedMinH;
     }
 
-    // Step 3: composite overlay at drag position
-    const exportedOverlayH = captureHeight * captureScale * overlayScale;
-    const overlayYPx = overlayY * EXPORT_H;
-    const overlayXOffset = ((1 - overlayScale) / 2) * EXPORT_W;
-    ctx.drawImage(overlayCanvas, overlayXOffset, overlayYPx, EXPORT_W * overlayScale, exportedOverlayH);
+    const overlayCanvasWidth = EXPORT_W * currentScale;
+    const overlayCanvasHeight = (overlayCanvas.height / overlayCanvas.width) * overlayCanvasWidth;
+
+    const overlayX = (currentPos.x * EXPORT_W) - (overlayCanvasWidth / 2);
+    const overlayYPx = (currentPos.y * EXPORT_H) - (overlayCanvasHeight * 0.05);
+
+    ctx.drawImage(
+      overlayCanvas,
+      overlayX,
+      overlayYPx,
+      overlayCanvasWidth,
+      overlayCanvasHeight
+    );
 
     return new Promise<Blob>((resolve, reject) => {
       exportCanvas.toBlob((blob) => {
         if (blob) resolve(blob); else reject(new Error("toBlob returned null"));
       }, "image/png");
     });
-  };const handleShare = async () => {
+  };
+
+  const handleShare = async () => {
     if (exporting) return;
     setExporting(true);
     try {
@@ -390,7 +490,7 @@ export function MorningCardInner() {
     } catch (err: unknown) {
       setExporting(false);
       const e = err as Error | undefined;
-      if (e?.name !== "AbortError") showToast(e?.message ?? "Share failed â€” try Download instead");
+      if (e?.name !== "AbortError") showToast(e?.message ?? "Share failed — try Download instead");
       console.error("Share error:", err);
     }
   };
@@ -406,14 +506,14 @@ export function MorningCardInner() {
       try {
         const a = document.createElement("a");
         a.href = url; a.download = "drunkva-session.png"; a.click();
-        showToast("Saved to Downloads âœ“");
+        showToast("Saved to Downloads ✓");
       } finally {
         URL.revokeObjectURL(url);
       }
       if (!witnessShared) setWitnessSheetOpen(true);
     } catch {
       setExporting(false);
-      showToast("Export failed â€” please try again");
+      showToast("Export failed — please try again");
     }
   };
 
@@ -554,7 +654,7 @@ export function MorningCardInner() {
               </label>
             </div>
 
-            {/* Preview â€” 9:16 container with draggable overlay */}
+            {/* Preview — 9:16 container with draggable overlay */}
             <div
               ref={previewRef}
               className="relative w-full overflow-hidden rounded-xl bg-black"
@@ -570,38 +670,30 @@ export function MorningCardInner() {
 
               {/* Draggable stats overlay */}
               <div
-                className="absolute left-0 right-0 cursor-grab active:cursor-grabbing select-none"
+                ref={wrapperRef}
+                className="absolute w-full cursor-grab active:cursor-grabbing select-none touch-none z-10"
                 style={{
-                  top: `${overlayY * 100}%`,
-                  transform: `scale(${overlayScale})`,
+                  left: `${position.x * 100}%`,
+                  top: `${position.y * 100}%`,
+                  transform: `translate(-50%, 0) scale(${scale})`,
                   transformOrigin: "top center",
+                  willChange: "transform",
                 }}
-                onPointerDown={(e) => {
-                  isDragging.current = true;
-                  dragStartY.current = e.clientY;
-                  dragStartOverlayY.current = overlayY;
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                }}
-                onPointerMove={(e) => {
-                  if (!isDragging.current || !previewRef.current) return;
-                  const containerH = previewRef.current.offsetHeight;
-                  const deltaFraction = (e.clientY - dragStartY.current) / containerH;
-                  const newY = Math.max(0, Math.min(0.75, dragStartOverlayY.current + deltaFraction));
-                  setOverlayY(newY);
-                }}
-                onPointerUp={() => { isDragging.current = false; }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
               >
-                {/* Drag handle â€” hidden from the html2canvas capture via
-                    data-html2canvas-ignore so it never appears in exports. */}
+                {/* Drag handle */}
                 <div
                   data-html2canvas-ignore
                   className="flex justify-center mb-2 opacity-50 pointer-events-none"
                 >
-                  <div className="w-8 h-1 rounded-full bg-white" />
+                  <div className="w-8 h-1 rounded-full bg-white shadow-sm" />
                 </div>
 
-                {/* Stats overlay â€” transparent bg so canvas compositing works */}
-                <div ref={overlayRef} data-export-overlay="1">
+                {/* Stats overlay */}
+                <div ref={overlayRef} data-export-overlay="1" className="w-full">
                   {template === "full" ? (
                     <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
                   ) : (
@@ -609,29 +701,34 @@ export function MorningCardInner() {
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Scale slider */}
-            <div className="flex items-center gap-3 px-1">
-              <span className="text-xs text-muted-foreground" aria-hidden="true">A</span>
-              <input
-                type="range"
-                min={0.6}
-                max={1.2}
-                step={0.05}
-                value={overlayScale}
-                onChange={(e) => setOverlayScale(parseFloat(e.target.value))}
-                className="flex-1 accent-primary"
-                aria-label="Overlay size"
-              />
-              <span className="text-base text-muted-foreground" aria-hidden="true">A</span>
+              {/* Reset button fallback */}
+              <button
+                onClick={() => { setPosition({ x: 0.5, y: 0.25 }); setScale(1.0); }}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 
+                           flex items-center justify-center z-20 transition-transform active:scale-90"
+                aria-label="Reset overlay position"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-white/70" />
+              </button>
+
+              {/* Gesture Hint */}
+              {showHint && (
+                <div
+                  className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-20"
+                  style={{ animation: 'fadeOut 2.5s forwards' }}
+                >
+                  <div className="bg-black/60 text-white/90 text-xs px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
+                    Drag to move &middot; Pinch to resize
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Share + Download buttons */}
             <div className="flex gap-2">
               <Button
                 id="export-share-btn"
-                onClick={handleShare}
                 disabled={exporting}
                 className="flex-1 bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium"
               >

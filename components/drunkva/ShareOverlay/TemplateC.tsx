@@ -77,60 +77,49 @@ export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) 
   const showDuration = duration !== "-";
 
   return (
-    <div className="absolute inset-0 text-white">
-      <div
-        className="pointer-events-none absolute top-0 left-0 right-0"
-        style={{
-          height: "55%",
-          background:
-            "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)",
-        }}
-      />
+    <div className="w-full flex flex-col items-center gap-4 px-8 text-center text-white">
+      <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
 
-      <div className="absolute top-[18%] left-0 right-0 flex flex-col items-center gap-4 px-8 text-center">
-        <Stat value={drinks.length} label="Drinks" unit={dominantDrink} />
+      <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
 
-        <Stat value={fastestStat.value} label="Fastest" showPR={fastestBeerIsPR} />
+      {showDuration && (
+        <Stat value={duration} label="Time" />
+      )}
 
-        {showDuration && (
-          <Stat value={duration} label="Time" />
-        )}
-
-        <div className="flex flex-col items-center">
-          <div className="text-[11px] uppercase tracking-[0.12em] text-white/70 font-medium">
-            {stage} &middot; {confidence}%
-          </div>
-
-          <div className="h-2" />
-
-          <div className="w-[128px]">
-            <svg width="128" height="32" viewBox="0 0 128 32" preserveAspectRatio="none" aria-hidden="true">
-              <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.6} />
-              <polyline
-                points={graph.points}
-                fill="none"
-                stroke="var(--primary)"
-                strokeWidth={2.5}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                strokeOpacity={0.9}
-              />
-              <circle cx={graph.peakX} cy={graph.peakY} r={3} fill="var(--primary)" />
-            </svg>
-          </div>
-
-          <div className="h-2" />
-
-          {/* Plain <img> instead of Next.js <Image> — html2canvas captures
-              native img elements reliably. next/image with width=0/height=0
-              renders a 0×0 intrinsic box that html2canvas cannot measure. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/drunkva-wordmark-white.png"
-            alt="Drunkva"
-            style={{ height: "14px", width: "auto", opacity: 0.8, objectFit: "contain", display: "block" }}
-          />
+      <div className="flex flex-col items-center">
+        <div className="text-[11px] uppercase tracking-[0.12em] text-white/70 font-medium">
+          {stage} &middot; {confidence}%
         </div>
+
+        <div className="h-2" />
+
+        <div className="w-[128px]">
+          <svg width="128" height="32" viewBox="0 0 128 32" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.6} />
+            <polyline
+              points={graph.points}
+              fill="none"
+              stroke="var(--primary)"
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              strokeOpacity={0.9}
+            />
+            <circle cx={graph.peakX} cy={graph.peakY} r={3} fill="var(--primary)" />
+          </svg>
+        </div>
+
+        <div className="h-2" />
+
+        {/* Plain <img> instead of Next.js <Image> — html2canvas captures
+            native img elements reliably. next/image with width=0/height=0
+            renders a 0×0 intrinsic box that html2canvas cannot measure. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/drunkva-wordmark-white.png"
+          alt="Drunkva"
+          style={{ height: "14px", width: "auto", opacity: 0.8, objectFit: "contain", display: "block" }}
+        />
       </div>
     </div>
   );
