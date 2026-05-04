@@ -532,10 +532,8 @@
   100% { background-position: 200% 0; }
 }
 
- @ k e y f r a m e s   f a d e O u t   { 
-     0 %   {   o p a c i t y :   1 ;   } 
-     8 0 %   {   o p a c i t y :   1 ;   } 
-     1 0 0 %   {   o p a c i t y :   0 ;   p o i n t e r - e v e n t s :   n o n e ;   } 
- } 
-  
- 
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
