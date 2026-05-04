@@ -208,15 +208,19 @@ export default function SessionPage() {
     }
   };
 
-  const endSession = async () => {
+  const endSession = () => {
     if (!session.id) return;
-    await fetch(`/api/sessions/${session.id}`, {
+    // Optimistic: clear local state & navigate immediately so there's no
+    // visible gap. The PATCH fires in the background — if it fails the
+    // session is still closed on the client and the morning-card still loads.
+    const sid = session.id;
+    localStorage.removeItem("dv-active-session");
+    router.push(`/morning-card?sessionId=${sid}`);
+    fetch(`/api/sessions/${sid}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ end_time: new Date().toISOString() }),
-    });
-    localStorage.removeItem("dv-active-session");
-    router.push(`/morning-card?sessionId=${session.id}`);
+    }).catch(() => {/* silent — session already ended on client */});
   };
 
   const userName = user?.fullName ?? "User";
