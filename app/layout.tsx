@@ -90,11 +90,14 @@ export default function RootLayout({
         {/* DNS-prefetch as a fallback for browsers that don't support preconnect */}
         <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
         <link rel="dns-prefetch" href="https://img.clerk.com" />
-      </head>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `// Prevent automatic geolocation prompts from cached/old bundles.
-;(function(){
+        {/* Geolocation noop — must live in <head> so it runs before any
+            component mounts. Placed here (not between </head><body>) to
+            avoid the "sync script outside main document" hydration error
+            that Clerk triggers when it injects <ClerkScripts> as a sibling
+            to <html>. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `;(function(){
   try {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       const noopError = function(cb){ if (typeof cb === 'function') cb({ code: 1, message: 'Geolocation disabled by app' }); };
@@ -103,8 +106,9 @@ export default function RootLayout({
     }
   } catch (e) {}
 })();`,
-        }}
-      />
+          }}
+        />
+      </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${barlowCondensed.variable} font-sans`}>
         {/*
           Dark shell + centering container.
@@ -120,9 +124,13 @@ export default function RootLayout({
             </Providers>
           </div>
         </div>
+        {/* async avoids the "sync script outside main document" ordering
+            warning when Next.js renders this layout fragment outside the
+            primary document (e.g. during Clerk's streaming render). */}
         <script
+          async
           dangerouslySetInnerHTML={{
-            __html: `if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }`,
+            __html: `if ('serviceWorker' in navigator) { window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); }`,
           }}
         />
         <Analytics />
