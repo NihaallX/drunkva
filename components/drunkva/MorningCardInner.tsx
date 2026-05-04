@@ -170,14 +170,14 @@ export function MorningCardInner() {
   };
 
   // Export strategy:
-  // Step 1 � draw background (photo or gradient) manually onto the export canvas.
+  // Step 1 — draw background (photo or gradient) manually onto the export canvas.
   //           html2canvas cannot render blob: URL photo backgrounds, which caused
   //           the blank white output when we tried to capture previewRef directly.
-  // Step 2 � capture only the stats overlay div (overlayRef) with html2canvas,
+  // Step 2 — capture only the stats overlay div (overlayRef) with html2canvas,
   //           forcing explicit dimensions because templates use absolute inset-0.
   //           Stylesheets are KEPT in the clone so Tailwind + SVG var() work.
   //           All computed styles are also inlined so html2canvas sees explicit values.
-  // Step 3 � composite overlay at the user-dragged y-position.
+  // Step 3 — composite overlay at the user-dragged y-position.
   const buildExportBlob = async (): Promise<Blob> => {
     const overlayEl = overlayRef.current;
     if (!overlayEl) throw new Error("overlay not mounted");
@@ -324,7 +324,7 @@ export function MorningCardInner() {
               }
             } catch { /* ignore per-node */ }
           }
-          // Stylesheets intentionally kept � removing them killed Tailwind
+          // Stylesheets intentionally kept — removing them killed Tailwind
           // and SVG CSS variable resolution in previous iterations.
         } catch (e) { console.warn("html2canvas onclone failed", e); }
       },
@@ -390,7 +390,7 @@ export function MorningCardInner() {
     } catch (err: unknown) {
       setExporting(false);
       const e = err as Error | undefined;
-      if (e?.name !== "AbortError") showToast(e?.message ?? "Share failed — try Download instead");
+      if (e?.name !== "AbortError") showToast(e?.message ?? "Share failed â€” try Download instead");
       console.error("Share error:", err);
     }
   };
@@ -406,14 +406,14 @@ export function MorningCardInner() {
       try {
         const a = document.createElement("a");
         a.href = url; a.download = "drunkva-session.png"; a.click();
-        showToast("Saved to Downloads ✓");
+        showToast("Saved to Downloads âœ“");
       } finally {
         URL.revokeObjectURL(url);
       }
       if (!witnessShared) setWitnessSheetOpen(true);
     } catch {
       setExporting(false);
-      showToast("Export failed — please try again");
+      showToast("Export failed â€” please try again");
     }
   };
 
@@ -554,7 +554,7 @@ export function MorningCardInner() {
               </label>
             </div>
 
-            {/* Preview — 9:16 container with draggable overlay */}
+            {/* Preview â€” 9:16 container with draggable overlay */}
             <div
               ref={previewRef}
               className="relative w-full overflow-hidden rounded-xl bg-black"
@@ -591,7 +591,7 @@ export function MorningCardInner() {
                 }}
                 onPointerUp={() => { isDragging.current = false; }}
               >
-                {/* Drag handle — hidden from the html2canvas capture via
+                {/* Drag handle â€” hidden from the html2canvas capture via
                     data-html2canvas-ignore so it never appears in exports. */}
                 <div
                   data-html2canvas-ignore
@@ -600,7 +600,7 @@ export function MorningCardInner() {
                   <div className="w-8 h-1 rounded-full bg-white" />
                 </div>
 
-                {/* Stats overlay — transparent bg so canvas compositing works */}
+                {/* Stats overlay â€” transparent bg so canvas compositing works */}
                 <div ref={overlayRef} data-export-overlay="1">
                   {template === "full" ? (
                     <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
