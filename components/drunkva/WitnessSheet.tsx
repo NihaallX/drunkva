@@ -91,15 +91,16 @@ export function WitnessSheet({ open, sessionId, onClose, onDone }: WitnessSheetP
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — no backdrop-blur so the app doesn't look broken/frozen.
+          Dark overlay is enough to focus attention on the sheet. */}
       <div
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/70"
         onClick={onClose}
       />
       {/* Sheet */}
       <div
         className={cn(
-          "fixed bottom-0 left-1/2 -translate-x-1/2 z-[var(--z-overlay)] w-full max-w-[var(--container-w)]",
+          "fixed bottom-0 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-[var(--container-w)]",
           "bg-card border-t border-border rounded-t-2xl",
           "transition-transform duration-300",
           open ? "translate-y-0" : "translate-y-full"
