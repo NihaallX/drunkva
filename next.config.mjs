@@ -33,7 +33,7 @@ const securityHeaders = [
       "font-src 'self' data: https://fonts.gstatic.com",
       // Allow Clerk hosted UIs and our own origin for API calls.
       // api.groq.com is called server-side only but listed here as a safety net.
-      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://api.groq.com https://va.vercel-scripts.com",
+      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://*.clerk-telemetry.com https://api.groq.com https://va.vercel-scripts.com",
       // Allow avatars from Clerk and other common CDNs
       "img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com https://images.clerk.dev",
       // Clerk internally creates Web Workers from blob: URLs for its auth machinery.

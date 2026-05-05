@@ -48,6 +48,11 @@ export function WitnessSheet({ open, sessionId, onClose, onDone }: WitnessSheetP
   // Debounced search
   useEffect(() => {
     if (!open) return;
+    if (!query.trim()) {
+      setSearching(false);
+      setResults([]);
+      return;
+    }
     const timer = setTimeout(async () => {
       setSearching(true);
       try {

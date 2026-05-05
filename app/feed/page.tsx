@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { useInView } from "react-intersection-observer";
@@ -72,14 +72,14 @@ export default function FeedPage() {
 
   // SWR manages page 0 — gives us free deduplication, revalidateOnFocus,
   // and stale-while-revalidate on the initial feed load.
-  const { data: page0Data, isLoading, mutate: mutatePage0 } = useSWR<{ feed: FeedItem[]; has_more: boolean }>(
+  const { isLoading, mutate: mutatePage0 } = useSWR<{ feed: FeedItem[]; has_more: boolean }>(
     "/api/feed?page=0",
     fetcher,
     {
       // Re-poll cheers every 30s when tab is visible — SWR handles this
       // natively via refreshInterval. Only page 0 is polled; deeper pages
       // are fetched once and merged locally.
-      refreshInterval: 30_000,
+      refreshInterval: () => (document.visibilityState === "visible" ? 30_000 : 0),
       revalidateOnFocus: true,
       dedupingInterval: 10_000,
       onSuccess: (data) => {
@@ -121,10 +121,10 @@ export default function FeedPage() {
     }
   }, [hasMore, loadingMore, pageIndex]);
 
-  // Trigger infinite scroll when sentinel enters viewport
-  if (inView && hasMore && !isLoading && !loadingMore && feed.length > 0) {
-    loadNextPage();
-  }
+  useEffect(() => {
+    if (!inView || !hasMore || isLoading || loadingMore || feed.length === 0) return;
+    void loadNextPage();
+  }, [feed.length, hasMore, inView, isLoading, loadingMore, loadNextPage]);
 
   const refresh = () => {
     setPages([]);

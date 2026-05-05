@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ImagePlus, RotateCcw } from "lucide-react";
@@ -9,9 +10,19 @@ import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { WitnessSheet } from "@/components/drunkva/WitnessSheet";
-import { TemplateA } from "@/components/drunkva/ShareOverlay/TemplateA";
-import { TemplateC } from "@/components/drunkva/ShareOverlay/TemplateC";
+
+const WitnessSheet = dynamic(
+  () => import("@/components/drunkva/WitnessSheet").then((module) => module.WitnessSheet),
+  { ssr: false }
+);
+const TemplateA = dynamic(
+  () => import("@/components/drunkva/ShareOverlay/TemplateA").then((module) => module.TemplateA),
+  { ssr: false }
+);
+const TemplateC = dynamic(
+  () => import("@/components/drunkva/ShareOverlay/TemplateC").then((module) => module.TemplateC),
+  { ssr: false }
+);
 
 const EXPORT_W = 1080;
 const EXPORT_H = 1920;

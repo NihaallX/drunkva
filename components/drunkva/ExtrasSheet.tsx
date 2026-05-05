@@ -7,6 +7,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerDescription,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -111,6 +112,9 @@ export function ExtrasSheet({
           <DrawerTitle className="text-foreground text-[15px] font-medium">
             Extras
           </DrawerTitle>
+          <DrawerDescription className="sr-only">
+            Track burps, washroom trips, and chakna for the current session.
+          </DrawerDescription>
         </DrawerHeader>
 
         <div className="flex flex-col gap-5 px-5 pb-2">
