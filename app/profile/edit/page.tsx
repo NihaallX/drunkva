@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
@@ -27,17 +27,6 @@ export default function EditProfilePage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { signOut } = useClerk();
-
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.user) {
-          // Leaving boxes blank per UX instructions
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const handleSubmit = async () => {
     if (!realName.trim()) {
