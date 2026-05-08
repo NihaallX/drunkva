@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Terms of Service â€” Drunkva",
+  title: "Terms of Service - Drunkva",
 };
 
 export default function TermsPage() {
