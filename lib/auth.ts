@@ -5,6 +5,9 @@ const clerkEnabled = process.env.NEXT_PUBLIC_CLERK_ENABLED === "true";
 
 // Fixed mock clerk_id used when Clerk is disabled
 const MOCK_CLERK_ID = "test-clerk-local-dev";
+// Cache for the mock user in local dev to avoid repeated DB queries
+let cachedMockUser: DbUser | null = null;
+
 
 /**
  * Returns the DB user for the current request.
@@ -15,6 +18,11 @@ const MOCK_CLERK_ID = "test-clerk-local-dev";
  */
 export async function getOrCreateUser(): Promise<DbUser | null> {
   if (!clerkEnabled) {
+        // Return cached user if available (dev optimization)
+        if (cachedMockUser) {
+          return cachedMockUser;
+        }
+
     // ON CONFLICT DO NOTHING — only insert once, never overwrite onboarding data
     await sql`
       INSERT INTO users (clerk_id, real_name, alias, avatar_url)
@@ -22,7 +30,8 @@ export async function getOrCreateUser(): Promise<DbUser | null> {
       ON CONFLICT (clerk_id) DO NOTHING
     `;
     const [user] = await sql`SELECT * FROM users WHERE clerk_id = ${MOCK_CLERK_ID}`;
-    return user as DbUser;
+    cachedMockUser = user as DbUser;
+    return cachedMockUser;
   }
 
   const { auth, currentUser } = await import("@clerk/nextjs/server");
