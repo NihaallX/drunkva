@@ -107,32 +107,44 @@ export async function DELETE(req: Request) {
     const user = await requireAuth();
 
     const body = await req.json().catch(() => ({}));
-    const { reason } = body;
+    const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
 
-    // 1. Delete follows
-    await sql`DELETE FROM follows WHERE follower_id = ${user.id} OR following_id = ${user.id}`;
+    await sql`BEGIN`;
+    try {
+      // 1. Delete follows
+      await sql`DELETE FROM follows WHERE follower_id = ${user.id} OR following_id = ${user.id}`;
 
-    // 2. Delete cheers
-    await sql`DELETE FROM cheers WHERE from_user_id = ${user.id} OR session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
+      // 2. Delete cheers
+      await sql`DELETE FROM cheers WHERE from_user_id = ${user.id} OR session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
 
-    // 3. Delete witnesses
-    await sql`DELETE FROM session_witnesses WHERE user_id = ${user.id} OR session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
+      // 3. Delete witnesses
+      await sql`DELETE FROM session_witnesses WHERE user_id = ${user.id} OR session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
 
-    // 4. Delete drinks
-    await sql`DELETE FROM drinks WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
+      // 4. Delete drinks
+      await sql`DELETE FROM drinks WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ${user.id})`;
 
-    // 5. Delete sessions
-    await sql`DELETE FROM sessions WHERE user_id = ${user.id}`;
+      // 5. Delete sessions
+      await sql`DELETE FROM sessions WHERE user_id = ${user.id}`;
 
-    // 6. Delete user
-    await sql`DELETE FROM users WHERE id = ${user.id}`;
+      // 6. Delete user
+      await sql`DELETE FROM users WHERE id = ${user.id}`;
 
-    // 7. Store survey reason decoupled
-    if (reason && reason.trim()) {
-      await sql`INSERT INTO account_deletions (reason) VALUES (${reason.trim()})`;
+      // 7. Store survey reason decoupled
+      if (reason) {
+        await sql`INSERT INTO account_deletions (reason) VALUES (${reason})`;
+      }
+
+      await sql`COMMIT`;
+      return NextResponse.json({ success: true });
+    } catch (txErr) {
+      try {
+        await sql`ROLLBACK`;
+      } catch (rollbackErr) {
+        console.error("DELETE /api/profile rollback failed", rollbackErr);
+      }
+      console.error("DELETE /api/profile transaction failed", txErr);
+      return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 });
     }
-
-    return NextResponse.json({ success: true });
   } catch (err) {
     if (err instanceof Response) return err;
     console.error("DELETE /api/profile failed", err);

@@ -11,6 +11,9 @@ const STATIC_ASSETS = [
   "/manifest.json",
   "/offline.html",
 ];
+const OFFLINE_DB_NAME = "drunkva-offline";
+const OFFLINE_STORE_NAME = "action-queue";
+const OFFLINE_SYNC_TAG = "sync-offline-queue";
 
 // ─── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener("install", (event) => {
@@ -94,36 +97,46 @@ self.addEventListener("fetch", (event) => {
 
 // ─── Background Sync (offline drink queue) ────────────────────────────────────
 self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-drinks") {
-    event.waitUntil(syncOfflineDrinks());
+  if (event.tag === OFFLINE_SYNC_TAG || event.tag === "sync-drinks") {
+    event.waitUntil(syncOfflineQueue());
   }
 });
 
-async function syncOfflineDrinks() {
+async function syncOfflineQueue() {
   let db;
   try {
-    db = await openDB();
+    db = await openOfflineDB();
   } catch {
     return;
   }
-  const tx = db.transaction("drunkva-offline-drinks", "readwrite");
-  const store = tx.objectStore("drunkva-offline-drinks");
-  const drinks = await new Promise((res, rej) => {
+
+  const tx = db.transaction(OFFLINE_STORE_NAME, "readwrite");
+  const store = tx.objectStore(OFFLINE_STORE_NAME);
+  const actions = await new Promise((res, rej) => {
     const req = store.getAll();
     req.onsuccess = () => res(req.result);
     req.onerror = rej;
   });
 
-  for (const drink of drinks) {
+  const sorted = Array.isArray(actions)
+    ? actions.sort((a, b) => Number(a?.queuedAt ?? 0) - Number(b?.queuedAt ?? 0))
+    : [];
+
+  for (const action of sorted) {
+    if (!action?.id || !action?.endpoint || !action?.method) {
+      continue;
+    }
+
     try {
-      const res = await fetch("/api/drinks", {
-        method: "POST",
+      const res = await fetch(action.endpoint, {
+        method: action.method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(drink),
+        body: JSON.stringify(action.payload ?? {}),
       });
-      if (res.ok) {
+
+      if (res.ok || (res.status >= 400 && res.status < 500)) {
         await new Promise((res, rej) => {
-          const req = store.delete(drink.id);
+          const req = store.delete(action.id);
           req.onsuccess = res;
           req.onerror = rej;
         });
@@ -134,13 +147,13 @@ async function syncOfflineDrinks() {
   }
 }
 
-function openDB() {
+function openOfflineDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open("drunkva-db", 1);
+    const req = indexedDB.open(OFFLINE_DB_NAME, 1);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains("drunkva-offline-drinks")) {
-        db.createObjectStore("drunkva-offline-drinks", { keyPath: "id" });
+      if (!db.objectStoreNames.contains(OFFLINE_STORE_NAME)) {
+        db.createObjectStore(OFFLINE_STORE_NAME, { keyPath: "id" });
       }
     };
     req.onsuccess = (e) => resolve(e.target.result);
@@ -148,7 +161,6 @@ function openDB() {
   });
 }
 
-// ─── Push Notifications ───────────────────────────────────────────────────────
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   let data;

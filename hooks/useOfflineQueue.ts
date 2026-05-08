@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 
 const DB_NAME = "drunkva-offline";
 const STORE_NAME = "action-queue";
+const SYNC_TAG = "sync-offline-queue";
 
 interface QueuedAction {
   id: string;
@@ -28,6 +29,20 @@ export function useOfflineQueue() {
   const [queueCount, setQueueCount] = useState(0);
   const [justSynced, setJustSynced] = useState(false);
 
+  const registerBackgroundSync = useCallback(async () => {
+    try {
+      if (!("serviceWorker" in navigator)) return;
+      const registration = (await navigator.serviceWorker.ready) as ServiceWorkerRegistration & {
+        sync?: { register: (tag: string) => Promise<void> };
+      };
+      if (registration.sync && typeof registration.sync.register === "function") {
+        await registration.sync.register(SYNC_TAG);
+      }
+    } catch {
+      // Background Sync unsupported or registration failed.
+    }
+  }, []);
+
   const refreshCount = useCallback(async () => {
     try {
       const db = await getDB();
@@ -46,8 +61,9 @@ export function useOfflineQueue() {
       queuedAt: Date.now(),
     };
     await db.add(STORE_NAME, item);
+    void registerBackgroundSync();
     await refreshCount();
-  }, [refreshCount]);
+  }, [refreshCount, registerBackgroundSync]);
 
   const syncQueue = useCallback(async () => {
     if (syncing.current || !navigator.onLine) return;
