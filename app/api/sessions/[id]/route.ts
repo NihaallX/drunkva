@@ -9,7 +9,7 @@ import {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// GET /api/sessions/[id] - full session + drinks (public)
+// GET /api/sessions/[id] - full session + drinks (authenticated + scoped)
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -18,11 +18,43 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
+    const viewer = await requireAuth();
+
     const [sessionRow] = await sql`
       SELECT * FROM sessions
       WHERE id = ${id}
     `;
     if (!sessionRow) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const isOwner = sessionRow.user_id === viewer.id;
+    let canView = isOwner;
+
+    if (!canView) {
+      const [followEdge] = await sql`
+        SELECT id
+        FROM follows
+        WHERE follower_id = ${viewer.id}
+          AND following_id = ${sessionRow.user_id}
+        LIMIT 1
+      `;
+      canView = !!followEdge;
+    }
+
+    if (!canView) {
+      const [witnessEdge] = await sql`
+        SELECT id
+        FROM session_witnesses
+        WHERE session_id = ${id}
+          AND user_id = ${viewer.id}
+        LIMIT 1
+      `;
+      canView = !!witnessEdge;
+    }
+
+    if (!canView) {
+      // Use 404 to avoid leaking whether a valid session id exists.
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     const [user] = await sql`
       SELECT real_name, alias, avatar_url
@@ -57,6 +89,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       cheers_count: Number(cheersCount[0]?.count ?? 0),
     });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("GET /api/sessions/[id] failed", { id, error });
     return NextResponse.json({ error: "Failed to load session" }, { status: 500 });
   }
