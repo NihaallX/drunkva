@@ -7,9 +7,11 @@ import { useInView } from "react-intersection-observer";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { FeedCard } from "@/components/drunkva/FeedCard";
+import { FundMeBanner } from "@/components/drunkva/FundMeBanner";
 import { BottomNav } from "@/components/drunkva/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import { useUser } from "@/hooks/useUser";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -138,8 +140,8 @@ export default function FeedPage() {
   return (
     <div className="dv-page bg-background">
       <div className="dv-nav flex items-center justify-between px-4 py-3">
-        <span className="text-[14px] font-medium text-foreground">Friends</span>
-        <div className="flex items-center gap-3">
+        <DrunkvaLogo />
+        <div className="flex items-center gap-2">
           <Button
             id="feed-refresh"
             variant="ghost"
@@ -164,14 +166,16 @@ export default function FeedPage() {
               />
             </svg>
           </Button>
-          <DrunkvaLogo />
+          <span className="text-[14px] font-medium text-foreground">Friends</span>
         </div>
       </div>
 
       <div className="overflow-y-auto h-[calc(100dvh-120px)]">
         {loading ? (
           <FeedSkeleton />
-        ) : feed.length === 0 ? (
+        ) : null}
+        {!loading && <FundMeBanner />}
+        {!loading && feed.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="text-4xl" aria-hidden="true">🍺</div>
             <div className="text-[15px] font-medium text-foreground">No sessions yet</div>
@@ -179,7 +183,8 @@ export default function FeedPage() {
               Follow friends to see their sessions here
             </div>
           </div>
-        ) : (
+        )}
+        {!loading && feed.length > 0 && (
           <>
             {feed.map((item) => (
               <FeedCard
