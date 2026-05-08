@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import sql from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 // POST /api/push/subscribe — store browser push subscription
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const [user] = await sql`SELECT id FROM users WHERE clerk_id = ${userId}`;
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  let user;
+  try {
+    user = await requireAuth();
+  } catch (err) {
+    if (err instanceof Response) return err;
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { endpoint, p256dh, auth: authKey } = await req.json();
 
@@ -26,8 +28,12 @@ export async function POST(req: Request) {
 
 // DELETE /api/push/subscribe — remove subscription on permission revoke
 export async function DELETE(req: Request) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireAuth();
+  } catch (err) {
+    if (err instanceof Response) return err;
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { endpoint } = await req.json();
   await sql`DELETE FROM push_subscriptions WHERE endpoint = ${endpoint}`;

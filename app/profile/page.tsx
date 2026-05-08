@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDuration } from "@/lib/confidence";
+import { clearSimpleUser } from "@/lib/simple-auth";
+import { clerkEnabled } from "@/lib/mock-user";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -84,6 +86,10 @@ function ProfileSkeleton() {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const handleSimpleSignOut = () => {
+    clearSimpleUser();
+    router.replace("/simple-auth");
+  };
 
   // SWR: cached, deduped, revalidates on tab focus automatically.
   // Back-navigation serves from cache instantly — no spinner on revisit.
@@ -102,19 +108,32 @@ export default function ProfilePage() {
     <div className="dv-page bg-background">
       <div className="dv-nav flex items-center justify-between px-4 py-3">
         <DrunkvaLogo />
-        <Button
-          id="settings-btn"
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => router.push("/profile/edit")}
-          aria-label="Settings"
-          className="text-muted-foreground"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.2" />
-            <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-          </svg>
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {!clerkEnabled && (
+            <Button
+              id="simple-signout-btn"
+              variant="ghost"
+              size="sm"
+              onClick={handleSimpleSignOut}
+              className="h-8 px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
+            >
+              Sign out
+            </Button>
+          )}
+          <Button
+            id="settings-btn"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => router.push("/profile/edit")}
+            aria-label="Settings"
+            className="text-muted-foreground"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.2" />
+              <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+            </svg>
+          </Button>
+        </div>
       </div>
 
       {!profile ? (

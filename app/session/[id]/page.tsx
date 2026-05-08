@@ -21,17 +21,9 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDuration } from "@/lib/confidence";
-import { MOCK_USER, clerkEnabled } from "@/lib/mock-user";
-import { useUser as useClerkUser } from "@clerk/nextjs";
+import { useUser } from "@/hooks/useUser";
 import { Timer } from "lucide-react";
 import { getPreferredFastestDrink } from "@/lib/drink-speed";
-
-let useUser: () => { user: typeof MOCK_USER | null | any };
-if (clerkEnabled) {
-  useUser = useClerkUser;
-} else {
-  useUser = () => ({ user: MOCK_USER });
-}
 
 interface SessionDetail {
   id: string;
@@ -224,7 +216,7 @@ export default function SessionDetailPage() {
   const { session, drinks, witnesses, cheers_count } = data;
 
   // Check if the current user is a pending witness (tagged but not yet confirmed)
-  const currentDbUserId = (user as any)?.dbId ?? null;
+  const currentDbUserId = (user as any)?.dbId ?? (user as any)?.id ?? null;
   const myWitnessRecord = currentDbUserId
     ? witnesses.find((w) => w.user_id === currentDbUserId && !w.confirmed)
     : null;

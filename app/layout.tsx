@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallPrompt } from "@/components/drunkva/InstallPrompt";
+import { AuthGuard } from "@/components/drunkva/AuthGuard";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -119,7 +120,7 @@ export default function RootLayout({
         <div className="dark min-h-screen bg-background flex flex-col items-center">
           <div className="w-full max-w-[var(--container-w)] flex flex-col min-h-screen relative bg-background overflow-x-clip">
             <Providers>
-              {children}
+              {clerkEnabled ? children : <AuthGuard>{children}</AuthGuard>}
               <InstallPrompt />
             </Providers>
           </div>

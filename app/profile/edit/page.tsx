@@ -7,13 +7,19 @@ import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, LogOut, Trash2 } from "lucide-react";
 import { clerkEnabled } from "@/lib/mock-user";
+import { clearSimpleUser } from "@/lib/simple-auth";
 import { useClerk as useClerkHook } from "@clerk/nextjs";
 
 let useClerk: () => any;
 if (clerkEnabled) {
   useClerk = useClerkHook;
 } else {
-  useClerk = () => ({ signOut: async () => { window.location.href = "/sign-in"; } });
+  useClerk = () => ({
+    signOut: async () => {
+      clearSimpleUser();
+      window.location.href = "/simple-auth";
+    },
+  });
 }
 
 export default function EditProfilePage() {
