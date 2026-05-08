@@ -546,3 +546,52 @@
   80% { opacity: 1; }
   100% { opacity: 0; pointer-events: none; }
 }
+
+.simple-auth-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.simple-auth-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 40%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 255, 255, 0.18) 60%,
+    transparent 100%
+  );
+  animation: shimmer 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.btn-arrow {
+  display: inline-block;
+  margin-left: 6px;
+  animation: nudge 2.2s ease-in-out infinite;
+}
+
+.simple-auth-btn:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  60% { left: 140%; }
+  100% { left: 140%; }
+}
+
+@keyframes nudge {
+  0% { transform: translateX(0); }
+  55% { transform: translateX(0); }
+  65% { transform: translateX(4px); }
+  75% { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}

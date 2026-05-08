@@ -122,9 +122,18 @@ export default function SimpleAuthPage() {
               id="simple-auth-submit"
               type="submit"
               disabled={submitting}
-              className="mt-1 h-12 w-full rounded-xl bg-[#f97316] px-4 text-[15px] font-bold text-white transition-opacity hover:bg-[#ea6a10] disabled:opacity-60"
+              className="simple-auth-btn mt-1 h-12 w-full rounded-xl bg-[#f97316] px-4 text-[15px] font-bold text-white transition-opacity hover:bg-[#ea6a10] disabled:opacity-60"
             >
-              {submitting ? "Signing in..." : "Let's go ->"}
+              {submitting ? (
+                "Signing in..."
+              ) : (
+                <>
+                  Let&apos;s go
+                  <span className="btn-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </>
+              )}
             </button>
           </form>
         </div>
