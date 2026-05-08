@@ -8,6 +8,24 @@ import { ExtrasSheet } from "@/components/drunkva/ExtrasSheet";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useUser } from "@/hooks/useUser";
 
+interface ProfileData {
+  user: { id: string; real_name: string; alias: string | null; avatar_url: string | null };
+  stats: {
+    total_sessions: number;
+    all_time_peak: number;
+    favourite_drink: string | null;
+    fastest_beer_seconds: number | null;
+  };
+}
+
+interface RecentSession {
+  id: string;
+  session_title: string | null;
+  venue_name: string | null;
+  peak_stage: string;
+  duration_seconds: number | null;
+}
+
 interface DrinkLog {
   id?: string;
   type: string;
@@ -53,6 +71,44 @@ export default function SessionPage() {
   const [logging, setLogging] = useState(false);
   const [venueInput, setVenueInput] = useState("");
   const [showStart, setShowStart] = useState(true);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [landingLoading, setLandingLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDashboardData = async () => {
+      try {
+        const [profileRes, sessionsRes] = await Promise.all([
+          fetch("/api/profile"),
+          fetch("/api/sessions?limit=2"),
+        ]);
+
+        const [profileData, sessionsData] = await Promise.all([
+          profileRes.ok ? profileRes.json() : null,
+          sessionsRes.ok ? sessionsRes.json() : null,
+        ]);
+
+        if (cancelled) return;
+
+        if (profileData) {
+          setProfile(profileData);
+        }
+        if (sessionsData?.sessions) {
+          setRecentSessions(sessionsData.sessions);
+        }
+      } finally {
+        if (!cancelled) setLandingLoading(false);
+      }
+    };
+
+    void loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("dv-active-session");
@@ -225,17 +281,26 @@ export default function SessionPage() {
 
   const userName = user?.fullName ?? "User";
   const userImageUrl = user?.imageUrl ?? null;
+  const greetingName = profile?.user.alias || profile?.user.real_name || userName;
 
   if (showStart) {
     return (
-      <SessionStartScreen
-        venueInput={venueInput}
-        onVenueChange={setVenueInput}
-        onStart={startSession}
-        starting={starting}
-        userName={userName}
-        userImageUrl={userImageUrl}
-      />
+      <>
+        <div className="flex flex-col min-h-screen">
+          <SessionStartScreen
+            greetingName={greetingName}
+            profile={profile}
+            recentSessions={recentSessions}
+            loading={landingLoading}
+            venueInput={venueInput}
+            onVenueChange={setVenueInput}
+            onStart={startSession}
+            starting={starting}
+            userName={userName}
+            userImageUrl={userImageUrl}
+          />
+        </div>
+      </>
     );
   }
 

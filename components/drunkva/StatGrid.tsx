@@ -25,11 +25,11 @@ interface StatCellProps {
 
 function StatCell({ label, children }: StatCellProps) {
   return (
-    <div className="dv-surface p-3">
-      <div className="dv-stat-label">{label}</div>
-      <div className="text-lg font-heading font-medium text-foreground mt-0.5 flex items-baseline gap-1">
+    <div className="dv-surface p-3 flex flex-col items-center justify-center">
+      <div className="text-lg font-heading font-medium text-foreground flex flex-col items-center text-center">
         {children}
       </div>
+      <div className="dv-stat-label mt-1 text-center">{label}</div>
     </div>
   );
 }
@@ -62,20 +62,12 @@ export function StatGrid({
 
       <div
         className={cn(
-          "dv-surface p-3 cursor-pointer transition-colors relative",
+          "dv-surface p-3 cursor-pointer transition-colors relative flex flex-col items-center justify-center",
           isSpeedTiming && "bg-primary/10 border-primary/30"
         )}
         onClick={onToggleTimer}
       >
-        <div className="dv-stat-label flex items-center justify-between">
-          Fastest
-          {isSpeedTiming ? (
-            <div className="size-2.5 rounded-[2px] bg-red-500/90" />
-          ) : (
-            <Timer className="size-3.5 text-muted-foreground opacity-60" />
-          )}
-        </div>
-        <div className={cn("text-lg font-heading font-medium mt-0.5 flex items-baseline gap-1", isSpeedTiming ? "text-primary" : "text-foreground")}>
+        <div className={cn("text-lg font-heading font-medium flex items-center gap-1", isSpeedTiming ? "text-primary" : "text-foreground")}>
           {isSpeedTiming ? (
             formatTimer(activeSpeedTimer ?? 0)
           ) : (
@@ -84,6 +76,14 @@ export function StatGrid({
               {fastestDrinkIsStopwatched && <Timer className="size-3.5 text-muted-foreground" />}
               {fastestBeerIsPR && dominantDrink === "beer" && <span className="dv-pr-pill">PR</span>}
             </>
+          )}
+        </div>
+        <div className="dv-stat-label flex items-center justify-center gap-1.5 mt-1">
+          Fastest
+          {isSpeedTiming ? (
+            <div className="size-2.5 rounded-[2px] bg-red-500/90" />
+          ) : (
+            <Timer className="size-3.5 text-muted-foreground opacity-60" />
           )}
         </div>
       </div>
