@@ -1,5 +1,9 @@
 "use client";
 
+import { reconstructCurve } from "@/lib/confidence";
+import { Stat } from "./shared";
+import type { ShareOverlayDrink, ShareOverlaySession } from "./shared";
+
 export interface FullInfoSelectedStats {
   duration: boolean;
   activeDuration: boolean;
@@ -11,39 +15,83 @@ export interface FullInfoSelectedStats {
   witnesses: boolean;
   venue: boolean;
   sessionTitle: boolean;
+  confidenceGraph: boolean;
 }
 
-interface ShareOverlayFullInfoSession {
-  start_time: string;
-  total_duration_seconds?: number | null;
-  active_duration_seconds?: number | null;
-  peak_stage?: string | null;
-  peak_confidence_pct?: number | null;
+type FullInfoSession = ShareOverlaySession & {
   washroom_count?: number | null;
   burp_count?: number | null;
   chakna_level?: string | null;
   venue_name?: string | null;
   session_title?: string | null;
-}
+};
 
-interface ShareOverlayFullInfoDrink {
-  type: string;
+type FullInfoDrink = ShareOverlayDrink & {
   is_pr?: boolean | null;
-}
+};
 
-interface ShareOverlayFullInfoWitness {
+type FullInfoWitness = {
   confirmed?: boolean | null;
   alias?: string | null;
   real_name?: string | null;
-}
+};
 
 interface ShareOverlayFullInfoProps {
-  session: ShareOverlayFullInfoSession;
-  drinks: ShareOverlayFullInfoDrink[];
+  session: FullInfoSession;
+  drinks: FullInfoDrink[];
   selectedStats: FullInfoSelectedStats;
-  witnesses?: ShareOverlayFullInfoWitness[];
+  witnesses?: FullInfoWitness[];
   sessionTitle?: string | null;
   venueName?: string | null;
+}
+
+const ARC_WIDTH = 128;
+const ARC_HEIGHT = 32;
+
+function buildArc(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
+  const curve = reconstructCurve(drinks, session.start_time);
+  const sessionStart = new Date(session.start_time).getTime();
+  const fallbackEnd = curve[curve.length - 1]?.time ?? 1;
+  const sessionEnd = session.end_time ? new Date(session.end_time).getTime() : sessionStart + fallbackEnd;
+  const duration = Math.max(1, sessionEnd - sessionStart);
+
+  if (drinks.length === 0 || curve.length === 0) {
+    const y = ARC_HEIGHT - (10 / 99) * 40;
+    const points = `0,${y} ${ARC_WIDTH},${y}`;
+    return {
+      points,
+      areaPoints: `0,${ARC_HEIGHT} ${points} ${ARC_WIDTH},${ARC_HEIGHT}`,
+      peakX: 0,
+      peakY: y,
+    };
+  }
+
+  if (drinks.length === 1) {
+    const confidence = curve[curve.length - 1]?.confidence ?? session.peak_confidence_pct ?? 10;
+    const y = ARC_HEIGHT - (confidence / 99) * 40;
+    const points = `0,${y} ${ARC_WIDTH},${y}`;
+    return {
+      points,
+      areaPoints: `0,${ARC_HEIGHT} ${points} ${ARC_WIDTH},${ARC_HEIGHT}`,
+      peakX: ARC_WIDTH / 2,
+      peakY: y,
+    };
+  }
+
+  const graphPoints = curve.map((point) => {
+    const x = Math.max(0, Math.min(ARC_WIDTH, (point.time / duration) * ARC_WIDTH));
+    const y = ARC_HEIGHT - (point.confidence / 99) * 40;
+    return { x, y, confidence: point.confidence };
+  });
+  const points = graphPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const peakPoint = graphPoints.reduce((max, point) => (point.confidence > max.confidence ? point : max), graphPoints[0]);
+
+  return {
+    points,
+    areaPoints: `0,${ARC_HEIGHT} ${points} ${ARC_WIDTH},${ARC_HEIGHT}`,
+    peakX: peakPoint.x,
+    peakY: peakPoint.y,
+  };
 }
 
 function formatDurationCompact(seconds: number | null | undefined): string {
@@ -53,16 +101,6 @@ function formatDurationCompact(seconds: number | null | undefined): string {
   const minutes = totalMinutes % 60;
   if (hours <= 0) return `${minutes}m`;
   return `${hours}h ${minutes}m`;
-}
-
-function formatDateLabel(isoDate: string): string {
-  const parsed = new Date(isoDate);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return parsed.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function chaknaLabel(level: string | null | undefined): string {
@@ -92,15 +130,13 @@ export function ShareOverlayFullInfo({
 }: ShareOverlayFullInfoProps) {
   const confidence = Math.max(0, Math.min(99, Math.round(session.peak_confidence_pct ?? 10)));
   const stage = (session.peak_stage ?? "Baseline").toUpperCase();
-  const totalDrinks = drinks.length;
-  const totalDuration = formatDurationCompact(session.total_duration_seconds);
-  const activeDuration = formatDurationCompact(session.active_duration_seconds);
-  const prCount = drinks.filter((drink) => drink.is_pr === true).length;
-  const confirmedWitnesses = witnesses.filter((w) => w.confirmed).map((w) => w.alias || w.real_name).filter(Boolean) as string[];
-  const witnessCount = confirmedWitnesses.length;
+  const confirmedWitnesses = witnesses
+    .filter((w) => w.confirmed)
+    .map((w) => w.alias || w.real_name)
+    .filter(Boolean) as string[];
+  const prCount = drinks.filter((d) => d.is_pr === true).length;
   const visibleTitle = (sessionTitle || session.session_title || "").trim();
   const visibleVenue = (venueName || session.venue_name || "").trim();
-  const sessionDateLabel = formatDateLabel(session.start_time);
 
   const drinkCounts = drinks.reduce<Record<string, number>>((acc, drink) => {
     const key = drink.type.toLowerCase();
@@ -108,148 +144,163 @@ export function ShareOverlayFullInfo({
     return acc;
   }, {});
 
-  const gridStats: Array<{ key: string; value: string; label: string; accent?: boolean }> = [
-    { key: "total-drinks", value: `${totalDrinks}`, label: "TOTAL DRINKS" },
+  const statItems: Array<{ key: string; label: string; value: string; unit?: string }> = [
+    { key: "total-drinks", label: "TOTAL DRINKS", value: `${drinks.length}` },
   ];
 
   if (selectedStats.duration) {
-    gridStats.push({ key: "duration", value: totalDuration, label: "DURATION" });
+    statItems.push({
+      key: "duration",
+      label: "DURATION",
+      value: formatDurationCompact(session.total_duration_seconds),
+    });
   }
   if (selectedStats.activeDuration) {
-    gridStats.push({ key: "active-duration", value: activeDuration, label: "ACTIVE TIME" });
+    statItems.push({
+      key: "active-duration",
+      label: "ACTIVE TIME",
+      value: formatDurationCompact(session.active_duration_seconds),
+    });
   }
   if (selectedStats.personalBests && prCount > 0) {
-    gridStats.push({
-      key: "personal-bests",
-      value: `${"\u{1F3C6}"} ${prCount} PR${prCount > 1 ? "s" : ""}`,
-      label: "RECORDS BROKEN",
-      accent: true,
+    statItems.push({
+      key: "records",
+      label: "RECORDS",
+      value: `${prCount}`,
+      unit: "PR",
     });
   }
   if (selectedStats.washroomCount) {
-    gridStats.push({
+    statItems.push({
       key: "washroom",
-      value: `${session.washroom_count ?? 0} ${"\u{1F6BD}"}`,
       label: "WASHROOM",
+      value: `${session.washroom_count ?? 0}`,
+      unit: "\u{1F6BD}",
     });
   }
   if (selectedStats.burpCount) {
-    gridStats.push({
+    statItems.push({
       key: "burps",
-      value: `${session.burp_count ?? 0} ${"\u{1F4A8}"}`,
       label: "BURPS",
+      value: `${session.burp_count ?? 0}`,
+      unit: "\u{1F4A8}",
     });
   }
   if (selectedStats.chaknaLevel) {
-    gridStats.push({
+    statItems.push({
       key: "chakna",
-      value: chaknaLabel(session.chakna_level),
       label: "CHAKNA",
+      value: chaknaLabel(session.chakna_level),
     });
   }
   if (selectedStats.witnesses) {
-    gridStats.push({
+    statItems.push({
       key: "witnesses",
-      value: `${witnessCount} ${"\u{1F441}"}`,
       label: "WITNESSES",
+      value: `${confirmedWitnesses.length}`,
+      unit: "\u{1F441}",
     });
   }
 
+  const graph = buildArc(session, drinks);
+
   return (
-    <div
-      className="relative h-full w-full overflow-hidden rounded-[18px] text-white"
-      style={{
-        backgroundColor: "#0a0a0a",
-        backgroundImage:
-          "radial-gradient(ellipse at 10% 10%, #1a0f00 0%, transparent 55%), radial-gradient(ellipse at 90% 90%, #0f0800 0%, transparent 55%)",
-      }}
-    >
-      <div className="relative z-10 flex h-full flex-col px-6 py-6">
-        <div className="min-h-[12%]">
-          <div className="flex items-start justify-between gap-3">
-            <div className="text-[18px] font-extrabold tracking-[0.12em] text-white">DRUNKVA</div>
-            <div className="rounded-full border-[0.5px] border-[#f97316] px-[7px] py-[2px] text-[10px] font-semibold uppercase tracking-[0.15em] text-[#f97316]">
-              FULL INFO
-            </div>
-          </div>
+    <div className="w-full flex flex-col items-center gap-6 px-4 text-center text-white">
+      {/* Header section */}
+      {(selectedStats.sessionTitle || selectedStats.venue) && (
+        <div className="flex flex-col items-center gap-1 opacity-90 dv-overlay-text">
           {selectedStats.sessionTitle && visibleTitle && (
-            <p
-              className="mt-2 text-[15px] italic leading-[1.35] text-white"
-              style={{
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {visibleTitle}
-            </p>
+            <div className="text-[18px] font-bold italic leading-tight text-white px-2">
+              &ldquo;{visibleTitle}&rdquo;
+            </div>
           )}
           {selectedStats.venue && visibleVenue && (
-            <p className="mt-1 text-[12px] text-[#555]">{visibleVenue}</p>
+            <div className="text-[12px] font-medium tracking-wider text-white/80 uppercase">
+              {visibleVenue}
+            </div>
           )}
         </div>
+      )}
 
-        <div className="mt-4 min-h-[18%] text-center">
-          <div className="text-[72px] font-black leading-none text-[#f97316]">{confidence}%</div>
-          <div className="mt-1 text-[16px] font-bold uppercase tracking-[0.125em] text-white">{stage}</div>
-          <div className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-[#1a1a1a]">
-            <div className="h-full rounded-full bg-[#f97316]" style={{ width: `${confidence}%` }} />
-          </div>
+      {/* Grid section */}
+      <div className="grid grid-cols-2 gap-x-8 gap-y-6 w-full px-2">
+        {statItems.map((stat) => (
+          <Stat key={stat.key} value={stat.value} label={stat.label} unit={stat.unit} />
+        ))}
+      </div>
+
+      {/* Drink Breakdown */}
+      {selectedStats.drinkBreakdown && Object.keys(drinkCounts).length > 0 && (
+        <div className="flex flex-wrap justify-center gap-2 max-w-[280px]">
+          {Object.entries(drinkCounts).map(([type, count]) => (
+            <div key={type} className="dv-overlay-text text-[14px] font-medium text-white">
+              {drinkEmoji(type)} <span className="font-bold">{count}</span>
+            </div>
+          ))}
         </div>
+      )}
 
-        <div className="mt-4 h-px bg-[#1a1a1a]" />
-
-        <div className="mt-4 min-h-[35%]">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-            {gridStats.map((stat) => (
-              <div key={stat.key}>
-                <div className={`text-[20px] font-extrabold leading-tight ${stat.accent ? "text-[#f97316]" : "text-white"}`}>
-                  {stat.value}
-                </div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[#444]">{stat.label}</div>
-              </div>
+      {/* Witnesses List */}
+      {selectedStats.witnesses && confirmedWitnesses.length > 0 && (
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="dv-overlay-label opacity-70">WITNESSED BY</div>
+          <div className="flex flex-wrap justify-center gap-2 max-w-[280px] dv-overlay-text text-[13px] font-medium text-white/90">
+            {confirmedWitnesses.map((name, i) => (
+              <span key={name}>
+                {name}{i < confirmedWitnesses.length - 1 ? " ·" : ""}
+              </span>
             ))}
           </div>
-
-          {selectedStats.drinkBreakdown && Object.keys(drinkCounts).length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {Object.entries(drinkCounts).map(([type, count]) => (
-                <div
-                  key={type}
-                  className="rounded-md bg-[#1a1a1a] px-2.5 py-1 text-[10px] text-[#777]"
-                >
-                  {drinkEmoji(type)} {count}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+      )}
 
-        {selectedStats.witnesses && confirmedWitnesses.length > 0 && (
-          <>
-            <div className="mt-4 h-px bg-[#1a1a1a]" />
-            <div className="mt-4 min-h-[15%]">
-              <div className="text-[10px] uppercase tracking-[0.1em] text-[#444]">WITNESSED BY</div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {confirmedWitnesses.map((name) => (
-                  <div
-                    key={name}
-                    className="rounded-full bg-[#1a1a1a] px-2.5 py-1 text-[12px] text-white"
-                  >
-                    {name}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+      {/* Graph Section */}
+      {selectedStats.confidenceGraph && (
+        <div className="flex flex-col items-center">
+          <div className="text-[11px] uppercase tracking-[0.12em] text-white/70 font-medium dv-overlay-text">
+            {stage} &middot; {confidence}%
+          </div>
 
-        <div className="mt-auto flex items-end justify-between pt-4 text-[11px] text-[#333]">
-          <div>drunkva.in</div>
-          <div>{sessionDateLabel}</div>
+          <div className="h-2" />
+
+          <div className="w-[128px]">
+            <svg width="128" height="32" viewBox="0 0 128 32" preserveAspectRatio="none" aria-hidden="true">
+              <polygon points={graph.areaPoints} fill="var(--primary)" fillOpacity={0.6} />
+              <polyline
+                points={graph.points}
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeOpacity={0.9}
+              />
+              <circle cx={graph.peakX} cy={graph.peakY} r={3} fill="var(--primary)" />
+            </svg>
+          </div>
+
+          <div className="h-2" />
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/drunkva-wordmark-white.png"
+            alt="Drunkva"
+            style={{ height: "14px", width: "84px", opacity: 0.8, objectFit: "contain", display: "block" }}
+          />
         </div>
-      </div>
+      )}
+      
+      {!selectedStats.confidenceGraph && (
+        <div className="flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/drunkva-wordmark-white.png"
+            alt="Drunkva"
+            style={{ height: "14px", width: "84px", opacity: 0.8, objectFit: "contain", display: "block" }}
+          />
+        </div>
+      )}
     </div>
   );
 }
+

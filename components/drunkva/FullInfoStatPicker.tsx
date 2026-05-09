@@ -34,6 +34,11 @@ const OPTIONAL_GROUPS: Array<{
         title: "Drink Breakdown",
         description: "Per-type count: beer, shots, wine, etc.",
       },
+      {
+        key: "confidenceGraph",
+        title: "Confidence Graph",
+        description: "Visual chart of your session curve",
+      },
     ],
   },
   {

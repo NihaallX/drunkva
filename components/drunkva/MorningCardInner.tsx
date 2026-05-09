@@ -51,6 +51,7 @@ const DEFAULT_FULL_INFO_STATS: FullInfoSelectedStats = {
   witnesses: true,
   venue: true,
   sessionTitle: true,
+  confidenceGraph: true,
 };
 
 // Step indicator
@@ -126,7 +127,7 @@ export function MorningCardInner() {
   const [position, setPosition] = useState({ x: 0.5, y: 0.25 });
   const [scale, setScale] = useState(1.0);
   const [showHint, setShowHint] = useState(true);
-  const canDragOverlay = step === 2 && shareStage === "export" && selectedTemplate === "strava";
+  const canDragOverlay = step === 2 && shareStage === "export";
 
   useEffect(() => { positionRef.current = position; }, [position]);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
@@ -805,111 +806,107 @@ export function MorningCardInner() {
 
         {step === 2 && shareStage === "export" && (
           <div className="flex flex-col gap-4">
-            {selectedTemplate === "strava" && (
-              <div className="flex gap-2">
-                {BG_PRESETS.map((bg) => (
-                  <button
-                    key={bg.id}
-                    id={`bg-${bg.id}`}
-                    onClick={() => { setSelectedBg(bg.id); setUserPhoto(null); }}
-                    className={cn(
-                      "size-10 rounded-lg border cursor-pointer transition-all",
-                      selectedBg === bg.id && !userPhoto ? "border-2 border-primary" : "border-border"
-                    )}
-                    style={{ background: bg.style }}
-                  />
-                ))}
-                <label className={cn(
-                  "size-10 rounded-lg border cursor-pointer flex items-center justify-center bg-card transition-all",
-                  userPhoto ? "border-2 border-primary" : "border-border"
-                )}>
-                  <ImagePlus className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoSelect}
-                  />
-                </label>
-              </div>
-            )}
+            <div className="flex gap-2">
+              {BG_PRESETS.map((bg) => (
+                <button
+                  key={bg.id}
+                  id={`bg-${bg.id}`}
+                  onClick={() => { setSelectedBg(bg.id); setUserPhoto(null); }}
+                  className={cn(
+                    "size-10 rounded-lg border cursor-pointer transition-all",
+                    selectedBg === bg.id && !userPhoto ? "border-2 border-primary" : "border-border"
+                  )}
+                  style={{ background: bg.style }}
+                />
+              ))}
+              <label className={cn(
+                "size-10 rounded-lg border cursor-pointer flex items-center justify-center bg-card transition-all",
+                userPhoto ? "border-2 border-primary" : "border-border"
+              )}>
+                <ImagePlus className="size-4 text-muted-foreground" aria-hidden="true" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelect}
+                />
+              </label>
+            </div>
 
             <div
               ref={previewRef}
               className={cn(
                 "relative w-full overflow-hidden bg-black",
-                selectedTemplate === "strava" ? "rounded-xl" : "rounded-[18px]"
+                "rounded-xl"
               )}
-              style={selectedTemplate === "strava" ? { aspectRatio: "9/16", ...bgStyle } : { aspectRatio: "9/16" }}
+              style={{ aspectRatio: "9/16", ...bgStyle }}
             >
-              {selectedTemplate === "strava" ? (
-                <>
-                  {userPhoto && (
-                    <img
-                      src={userPhoto}
-                      alt="Background"
-                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                    />
-                  )}
+              <>
+                {userPhoto && (
+                  <img
+                    src={userPhoto}
+                    alt="Background"
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                  />
+                )}
 
+                <div
+                  ref={wrapperRef}
+                  className="absolute w-full cursor-grab active:cursor-grabbing select-none touch-none z-10"
+                  style={{
+                    left: `${position.x * 100}%`,
+                    top: `${position.y * 100}%`,
+                    transform: `translate(-50%, 0) scale(${scale})`,
+                    transformOrigin: "top center",
+                    willChange: "transform",
+                  }}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={handlePointerUp}
+                >
                   <div
-                    ref={wrapperRef}
-                    className="absolute w-full cursor-grab active:cursor-grabbing select-none touch-none z-10"
-                    style={{
-                      left: `${position.x * 100}%`,
-                      top: `${position.y * 100}%`,
-                      transform: `translate(-50%, 0) scale(${scale})`,
-                      transformOrigin: "top center",
-                      willChange: "transform",
-                    }}
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
+                    data-html2canvas-ignore
+                    className="flex justify-center mb-2 opacity-50 pointer-events-none"
                   >
-                    <div
-                      data-html2canvas-ignore
-                      className="flex justify-center mb-2 opacity-50 pointer-events-none"
-                    >
-                      <div className="w-8 h-1 rounded-full bg-white shadow-sm" />
-                    </div>
-
-                    <div ref={overlayRef} data-export-overlay="1" className="w-full">
-                      <StravaStyledTemplate session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-                    </div>
+                    <div className="w-8 h-1 rounded-full bg-white shadow-sm" />
                   </div>
 
-                  <button
-                    onClick={() => { setPosition({ x: 0.5, y: 0.25 }); setScale(1.0); }}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 flex items-center justify-center z-20 transition-transform active:scale-90"
-                    aria-label="Reset overlay position"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-white/70" />
-                  </button>
-
-                  {showHint && (
-                    <div
-                      className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-20"
-                      style={{ animation: "fadeOut 2.5s forwards" }}
-                    >
-                      <div className="bg-black/60 text-white/90 text-xs px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
-                        Drag to move &middot; Pinch to resize
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div ref={overlayRef} data-export-overlay="1" className="h-full w-full">
-                  <ShareOverlayFullInfo
-                    session={session}
-                    drinks={drinks}
-                    witnesses={witnesses}
-                    selectedStats={selectedStats}
-                    sessionTitle={title}
-                    venueName={venueName}
-                  />
+                  <div ref={overlayRef} data-export-overlay="1" className="w-full">
+                    {selectedTemplate === "strava" ? (
+                      <StravaStyledTemplate session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                    ) : (
+                      <ShareOverlayFullInfo
+                        session={session}
+                        drinks={drinks}
+                        witnesses={witnesses}
+                        selectedStats={selectedStats}
+                        sessionTitle={title}
+                        venueName={venueName}
+                      />
+                    )}
+                  </div>
                 </div>
-              )}
+
+                <button
+                  onClick={() => { setPosition({ x: 0.5, y: 0.25 }); setScale(1.0); }}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 flex items-center justify-center z-20 transition-transform active:scale-90"
+                  aria-label="Reset overlay position"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-white/70" />
+                </button>
+
+                {showHint && (
+                  <div
+                    className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-20"
+                    style={{ animation: "fadeOut 2.5s forwards" }}
+                  >
+                    <div className="bg-black/60 text-white/90 text-xs px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
+                      Drag to move &middot; Pinch to resize
+                    </div>
+                  </div>
+                )}
+              </>
             </div>
 
             <div className="flex gap-2">
