@@ -66,7 +66,7 @@ function buildArc(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
   };
 }
 
-export function TemplateC({ session, drinks, fastestBeerIsPR }: TemplateCProps) {
+export function StravaStyledTemplate({ session, drinks, fastestBeerIsPR }: TemplateCProps) {
   const graph = buildArc(session, drinks);
   const stage = session.peak_stage ?? "Baseline";
   const confidence = Math.round(session.peak_confidence_pct ?? 10);

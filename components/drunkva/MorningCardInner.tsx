@@ -14,8 +14,8 @@ const WitnessSheet = dynamic(
   () => import("@/components/drunkva/WitnessSheet").then((module) => module.WitnessSheet),
   { ssr: false }
 );
-const TemplateC = dynamic(
-  () => import("@/components/drunkva/ShareOverlay/TemplateC").then((module) => module.TemplateC),
+const StravaStyledTemplate = dynamic(
+  () => import("@/components/drunkva/ShareOverlay/TemplateC").then((module) => module.StravaStyledTemplate),
   { ssr: false }
 );
 
@@ -749,7 +749,7 @@ export function MorningCardInner() {
 
                 {/* Stats overlay */}
                 <div ref={overlayRef} data-export-overlay="1" className="w-full">
-                  <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                  <StravaStyledTemplate session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
                 </div>
               </div>
 
