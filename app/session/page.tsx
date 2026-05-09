@@ -82,7 +82,7 @@ export default function SessionPage() {
       try {
         const [profileRes, sessionsRes] = await Promise.all([
           fetch("/api/profile"),
-          fetch("/api/sessions?limit=2"),
+          fetch("/api/sessions?limit=3"),
         ]);
 
         const [profileData, sessionsData] = await Promise.all([
