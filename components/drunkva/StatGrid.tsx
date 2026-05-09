@@ -1,8 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { Timer } from "lucide-react";
 import { formatDuration } from "@/lib/confidence";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface StatGridProps {
   drinkCount: number;
@@ -16,6 +23,7 @@ interface StatGridProps {
   isSpeedTiming?: boolean;
   activeSpeedTimer?: number;
   onToggleTimer?: () => void;
+  onUpdateWashroom?: (count: number) => void;
 }
 
 interface StatCellProps {
@@ -46,11 +54,22 @@ export function StatGrid({
   isSpeedTiming,
   activeSpeedTimer,
   onToggleTimer,
+  onUpdateWashroom,
 }: StatGridProps) {
+  const [washroomOpen, setWashroomOpen] = useState(false);
+
   const formatTimer = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const handleWashroomDecrement = () => {
+    onUpdateWashroom?.(Math.max(0, washroomCount - 1));
+  };
+
+  const handleWashroomIncrement = () => {
+    onUpdateWashroom?.(washroomCount + 1);
   };
 
   return (
@@ -92,10 +111,46 @@ export function StatGrid({
         {liveDurationFormatted}
       </StatCell>
 
-      <StatCell label="Washroom">
-        {washroomCount}
-        <span className="text-[11px] text-muted-foreground font-normal">trips</span>
-      </StatCell>
+      <Popover open={washroomOpen} onOpenChange={setWashroomOpen}>
+        <PopoverTrigger asChild>
+          <div
+            className={cn(
+              "dv-surface p-3 cursor-pointer transition-colors relative flex flex-col items-center justify-center",
+              washroomOpen && "bg-primary/10 border-primary/30"
+            )}
+          >
+            <div className={cn("text-lg font-heading font-medium", washroomOpen ? "text-primary" : "text-foreground")}>
+              {washroomCount}
+              <span className="text-[11px] text-muted-foreground font-normal block">trips</span>
+            </div>
+            <div className="dv-stat-label mt-1">Washroom</div>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-fit p-3" align="center">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-9 rounded-full border-border bg-card text-foreground text-lg"
+              onClick={handleWashroomDecrement}
+              aria-label="Decrease washroom trips"
+            >
+              −
+            </Button>
+            <span className="text-xl font-medium text-foreground min-w-8 text-center">
+              {washroomCount}
+            </span>
+            <Button
+              size="icon"
+              className="size-9 rounded-full bg-primary text-primary-foreground text-lg"
+              onClick={handleWashroomIncrement}
+              aria-label="Increase washroom trips"
+            >
+              +
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

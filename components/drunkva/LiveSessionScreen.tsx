@@ -47,6 +47,7 @@ interface LiveSessionScreenProps {
   onEnd: () => void;
   onLogDrink: (type: string, options?: { manualDurationSeconds?: number }) => void;
   onOpenExtras: () => void;
+  onUpdateWashroom?: (count: number) => void;
   logging: boolean;
   userName: string;
   userImageUrl: string | null;
@@ -59,6 +60,7 @@ export function LiveSessionScreen({
   onEnd,
   onLogDrink,
   onOpenExtras,
+  onUpdateWashroom,
   logging,
   userName,
   userImageUrl,
@@ -66,7 +68,7 @@ export function LiveSessionScreen({
   justSynced,
 }: LiveSessionScreenProps) {
   const router = useRouter();
-  const { activeDuration, isPaused, hasLoggedDrink } = useSessionTimer(
+  const { activeDuration, isPaused } = useSessionTimer(
     session.startTime,
     session.drinks,
     session.endTime
@@ -195,12 +197,13 @@ export function LiveSessionScreen({
           fastestDrinkSeconds={fastestDrink?.duration_seconds ?? null}
           fastestDrinkIsStopwatched={fastestDrink?.timing_method === "stopwatch"}
           fastestBeerIsPR={session.fastestBeerIsPR}
-          liveDurationFormatted={hasLoggedDrink ? formatLiveDuration(activeDuration) : "-"}
-          showDurationUnits={hasLoggedDrink}
+          liveDurationFormatted={session.startTime ? formatLiveDuration(activeDuration) : "-"}
+          showDurationUnits={Boolean(session.startTime)}
           washroomCount={session.washroomCount}
           isSpeedTiming={isSpeedTiming}
           activeSpeedTimer={activeSpeedTimer}
           onToggleTimer={toggleTimer}
+          onUpdateWashroom={onUpdateWashroom}
         />
 
         {isPaused && (

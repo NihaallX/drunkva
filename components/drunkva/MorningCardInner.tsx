@@ -39,7 +39,7 @@ type Template = "full" | "minimal";
 function StepBar({ step }: { step: number }) {
   return (
     <div className="flex gap-1.5 mb-5">
-      {[1, 2, 3].map((s) => (
+      {[1, 2].map((s) => (
         <div
           key={s}
           className={cn(
@@ -86,7 +86,7 @@ export function MorningCardInner() {
   const scaleRef = useRef(1.0);
 
   // State
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [session, setSession] = useState<any>(null);
   const [drinks, setDrinks] = useState<any[]>([]);
   const [venueName, setVenueName] = useState("");
@@ -569,68 +569,118 @@ export function MorningCardInner() {
       <div className="px-4 pt-4">
         <StepBar step={step} />
 
-        {/* STEP 1: Refine */}
+        {/* STEP 1: Unified (Refine + Title) */}
         {step === 1 && (
           <div className="flex flex-col gap-5">
-            <h1 className="text-lg font-semibold text-foreground">Refine your session</h1>
-            <div className="flex flex-col gap-1.5">
-              <div className="dv-stat-label">Venue</div>
-              <input id="venue-refine" className="dv-input" value={venueName} onChange={(e) => setVenueName(e.target.value)} placeholder="Venue name" />
+            {/* Page title */}
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Wrap up the night</h1>
+              <p className="text-[13px] text-muted-foreground mt-1">Review your session before sharing</p>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="dv-stat-label">Drinks ({drinks.length} total)</div>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(
-                  drinks.reduce((acc: Record<string, number>, d: any) => ({ ...acc, [d.type]: (acc[d.type] ?? 0) + 1 }), {})
-                ).map(([type, count]) => (
-                  <div key={type} className="dv-surface px-3 py-1.5 text-[13px] text-foreground">
-                    {count as React.ReactNode}x {type}
+
+            {/* Stats card */}
+            <div className="dv-surface p-4 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="dv-stat-label">Duration</div>
+                  <div className="text-base font-medium text-foreground mt-1">
+                    {session.total_duration_seconds ? formatLiveDuration(session.total_duration_seconds) : "-"}
                   </div>
-                ))}
+                </div>
+                <div>
+                  <div className="dv-stat-label">Peak</div>
+                  <div className="text-base font-medium text-foreground mt-1">
+                    {session.peak_confidence_pct}%
+                  </div>
+                  <div className="text-[11px] text-muted-foreground capitalize">{session.peak_stage}</div>
+                </div>
+                <div>
+                  <div className="dv-stat-label">Drinks</div>
+                  <div className="text-base font-medium text-foreground mt-1">{drinks.length}</div>
+                </div>
+                <div>
+                  <div className="dv-stat-label">Witnesses</div>
+                  <div className="text-base font-medium text-foreground mt-1">0</div>
+                </div>
+              </div>
+              {/* Drink breakdown chips */}
+              <div className="pt-2 border-t border-border">
+                <div className="text-[11px] text-muted-foreground mb-2">Drink breakdown</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(
+                    drinks.reduce((acc: Record<string, number>, d: any) => ({ ...acc, [d.type]: (acc[d.type] ?? 0) + 1 }), {})
+                  ).map(([type, count]) => (
+                    <div key={type} className="bg-background px-2.5 py-1 text-[12px] text-foreground rounded-full border border-border">
+                      {count}x {type}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            <Button id="step1-next" onClick={() => { setStep(2); generateTitle(); }}
-              className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              Generate title &rarr;
+
+            {/* Venue input */}
+            <div className="flex flex-col gap-1.5">
+              <div className="dv-stat-label">Where were you drinking?</div>
+              <input
+                id="venue-input"
+                className="dv-input"
+                value={venueName}
+                onChange={(e) => setVenueName(e.target.value)}
+                placeholder="Venue name (optional)"
+              />
+            </div>
+
+            {/* Session title section */}
+            <div className="flex flex-col gap-1.5">
+              <div className="dv-stat-label">Session title</div>
+              {loadingTitle ? (
+                <Skeleton className="h-16 w-full rounded-[var(--radius-md)]" />
+              ) : title ? (
+                <div className="dv-surface p-4 relative">
+                  <p className="text-[15px] italic text-foreground text-center leading-snug">{title}</p>
+                  <button
+                    id="regenerate-btn"
+                    onClick={generateTitle}
+                    disabled={loadingTitle}
+                    className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors text-xs"
+                  >
+                    ↻
+                  </button>
+                </div>
+              ) : (
+                <div className="dv-surface p-4">
+                  <p className="text-[14px] text-muted-foreground text-center italic">Your AI title will appear here</p>
+                </div>
+              )}
+            </div>
+
+            {/* Generate title button */}
+            <Button
+              id="generate-title-btn"
+              onClick={generateTitle}
+              disabled={loadingTitle}
+              className="h-12 text-[15px] font-medium bg-card border border-border text-foreground hover:bg-card/80"
+            >
+              {loadingTitle ? "⏳ Generating..." : "✦ Generate title"}
+            </Button>
+
+            {/* Choose photo button - disabled until title generated */}
+            <Button
+              id="choose-photo-btn"
+              onClick={() => setStep(2)}
+              disabled={!title || loadingTitle}
+              className={cn(
+                "h-12 text-[15px] font-medium bg-primary text-primary-foreground active:bg-primary/90",
+                (!title || loadingTitle) && "opacity-40 pointer-events-none"
+              )}
+            >
+              Choose photo →
             </Button>
           </div>
         )}
 
-        {/* STEP 2: Title */}
+        {/* STEP 2: Overlay + Share (previously step 3) */}
         {step === 2 && (
-          <div className="flex flex-col gap-5">
-            <h1 className="text-lg font-semibold text-foreground">Session title</h1>
-            {loadingTitle ? (
-              <Skeleton className="h-14 w-full rounded-[var(--radius-md)]" />
-            ) : title ? (
-              <div className="dv-surface p-3.5">
-                <p className="text-[15px] font-medium text-foreground leading-snug">&ldquo;{title}&rdquo;</p>
-              </div>
-            ) : null}
-            <div className="flex gap-2">
-              <Button id="regenerate-title" variant="outline" onClick={generateTitle} disabled={loadingTitle}
-                className="flex-1 border-border text-muted-foreground text-[13px]">
-                {title ? "Regenerate" : "Try again"}
-              </Button>
-            </div>
-            <textarea
-              id="title-edit"
-              ref={titleInputRef}
-              className="dv-input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              rows={2}
-              placeholder="Write your own title..."
-            />
-            <Button id="step2-next" onClick={() => setStep(3)}
-              className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium">
-              Choose photo &rarr;
-            </Button>
-          </div>
-        )}
-
-        {/* STEP 3: Overlay + Share */}
-        {step === 3 && (
           <div className="flex flex-col gap-4">
             {/* Template toggle */}
             <ToggleGroup type="single" value={template} onValueChange={(v) => v && setTemplate(v as Template)}

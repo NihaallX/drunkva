@@ -264,6 +264,20 @@ export default function SessionPage() {
     }
   };
 
+  const handleWashroomUpdate = async (count: number) => {
+    setSession((s) => ({ ...s, washroomCount: count }));
+
+    if (session.id) {
+      await fetch(`/api/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          washroom_count: count,
+        }),
+      });
+    }
+  };
+
   const endSession = () => {
     if (!session.id) return;
     // Optimistic: clear local state & navigate immediately so there's no
@@ -311,6 +325,7 @@ export default function SessionPage() {
         onEnd={endSession}
         onLogDrink={logDrink}
         onOpenExtras={() => setExtrasOpen(true)}
+        onUpdateWashroom={handleWashroomUpdate}
         logging={logging}
         userName={userName}
         userImageUrl={userImageUrl}
