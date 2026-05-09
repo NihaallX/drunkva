@@ -616,9 +616,9 @@ export function MorningCardInner() {
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(
                     drinks.reduce((acc: Record<string, number>, d: any) => ({ ...acc, [d.type]: (acc[d.type] ?? 0) + 1 }), {})
-                  ).map(([type, count]) => (
+                  ).map(([type, count]: [string, unknown]) => (
                     <div key={type} className="bg-background px-2.5 py-1 text-[12px] text-foreground rounded-full border border-border">
-                      {count}x {type}
+                      {count as number}x {type}
                     </div>
                   ))}
                 </div>
