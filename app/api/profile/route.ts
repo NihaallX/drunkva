@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import sql from "@/lib/db";
 
+function isSameOrigin(req: Request) {
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+
+  try {
+    return new URL(origin).origin === new URL(req.url).origin;
+  } catch {
+    return false;
+  }
+}
+
 // GET /api/profile — own profile + stats, or another user's profile via ?userId=<db_id>
 export async function GET(req: Request) {
   try {
@@ -105,6 +116,10 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const user = await requireAuth();
+
+    if (!isSameOrigin(req)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await req.json().catch(() => ({}));
     const reason = typeof body?.reason === "string" ? body.reason.trim() : "";

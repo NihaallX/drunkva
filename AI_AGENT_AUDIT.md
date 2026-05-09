@@ -75,15 +75,16 @@ This section is the source of truth when it conflicts with older findings below.
   - Followers of the owner can view (preserves feed -> session detail flow)
   - Tagged witnesses can view
   - Others receive 404
-- `/api/profile` `DELETE` is now transactional (`BEGIN/COMMIT/ROLLBACK`) to prevent partial account deletion.
+- `/api/profile` `DELETE` is now transactional (`BEGIN/COMMIT/ROLLBACK`) and rejects cross-origin requests with a same-origin check to reduce CSRF risk.
 - Offline queue background sync now uses the same IndexedDB names as the app queue:
   - DB: `drunkva-offline`
   - Store: `action-queue`
   - Added shared sync tag `sync-offline-queue`
   - Queue hook now attempts background sync registration where supported.
-
-### Remaining high-priority issues
-
+- Morning-card cron now batches drink lookups for hard-close and soft-close sessions instead of fetching drinks per session.
+- Morning-card export now caches the font preload work instead of waiting on the 800ms font bootstrap delay on every share/download.
+- Production CSP now omits `unsafe-eval` from `script-src` (dev retains it for HMR).
+- Witness tagging is now surfaced after morning-card export/share and was verified in browser QA.
 
 ### Fixed in May 9, 2026 update (UI/UX & Morning Card)
 
@@ -118,12 +119,9 @@ This section is the source of truth when it conflicts with older findings below.
 
 ### Remaining high-priority issues
 
-- Morning-card cron still performs per-session loops and repeated per-session drink fetches (can be batched).
 - html2canvas export path is still heavy and can cause perceived jank on low-end devices.
-- CSP still allows `unsafe-inline` and `unsafe-eval` in production policy.
-- `DELETE /api/profile` still has no dedicated CSRF token defense layer.
+- CSP still allows `unsafe-inline` in production policy; removing it would require nonce-based script handling.
 - Document still contains stale sections below that mention already-resolved issues; treat this update section as canonical.
-- Witness feature not yet fully operational (functionality exists but not actively used in UX flows)
 ---
 
 ## Project Overview

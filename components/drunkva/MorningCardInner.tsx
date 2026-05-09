@@ -38,6 +38,8 @@ const BG_PRESETS = [
   { id: "dark-purple", style: "linear-gradient(160deg, #1a0a2e 0%, #2a1050 50%, #1a0a3a 100%)" },
 ];
 
+let exportFontsPromise: Promise<void> | null = null;
+
 type ShareTemplate = "strava" | "full-info";
 type ShareStage = "template" | "picker" | "export";
 
@@ -123,6 +125,36 @@ export function MorningCardInner() {
   const showToast = (message: string) => {
     setToast({ visible: true, message });
     setTimeout(() => setToast({ visible: false, message: "" }), 3500);
+  };
+
+  const ensureExportFontsLoaded = () => {
+    if (typeof document === "undefined") return Promise.resolve();
+
+    if (document.getElementById("export-fonts") && document.fonts.check('16px "Barlow Condensed"') && document.fonts.check('16px "Inter"')) {
+      return Promise.resolve();
+    }
+
+    if (!exportFontsPromise) {
+      exportFontsPromise = (async () => {
+        if (!document.getElementById("export-fonts")) {
+          const link = document.createElement("link");
+          link.id = "export-fonts";
+          link.rel = "stylesheet";
+          link.href = "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap";
+          document.head.appendChild(link);
+        }
+
+        await Promise.all([
+          document.fonts.load('400 16px "Barlow Condensed"'),
+          document.fonts.load('400 16px "Inter"'),
+        ]);
+        await document.fonts.ready;
+      })().finally(() => {
+        exportFontsPromise = null;
+      });
+    }
+
+    return exportFontsPromise;
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,15 +246,7 @@ export function MorningCardInner() {
     const previewEl = previewRef.current;
     if (!previewEl) throw new Error("preview not mounted");
 
-    if (!document.getElementById("export-fonts")) {
-      const link = document.createElement("link");
-      link.id = "export-fonts";
-      link.rel = "stylesheet";
-      link.href = "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap";
-      document.head.appendChild(link);
-      await new Promise((resolve) => setTimeout(resolve, 800)); // give browser time to parse and fetch font files
-    }
-    await document.fonts.ready;
+    await ensureExportFontsLoaded();
 
     const captureWidth = previewEl.offsetWidth;
     const captureHeight = previewEl.offsetHeight;
