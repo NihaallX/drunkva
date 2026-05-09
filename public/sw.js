@@ -1,8 +1,8 @@
-// Drunkva Service Worker v4
-const CACHE_NAME = "drunkva-v4";
+// Drunkva Service Worker v5
+const CACHE_NAME = "drunkva-v5";
 // Separate cache for Next.js static chunks — these are content-hashed and
 // immutable, so we can serve them from cache indefinitely and revalidate lazily.
-const CHUNK_CACHE_NAME = "drunkva-chunks-v4";
+const CHUNK_CACHE_NAME = "drunkva-chunks-v5";
 
 // Only cache truly static/public assets — NOT auth-protected pages
 const STATIC_ASSETS = [
