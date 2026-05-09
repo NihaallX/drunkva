@@ -8,9 +8,13 @@ export async function POST(req: Request) {
   try {
     const user = await requireAuth();
 
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const { session_id, user_ids } = await req.json();
-    if (!session_id || !Array.isArray(user_ids) || user_ids.length === 0) {
-      return NextResponse.json({ error: "session_id and user_ids required" }, { status: 400 });
+    if (!session_id || !UUID_REGEX.test(session_id) || !Array.isArray(user_ids) || user_ids.length === 0) {
+      return NextResponse.json({ error: "session_id and user_ids required and must be valid UUIDs" }, { status: 400 });
+    }
+    if (!user_ids.every((id) => typeof id === "string" && UUID_REGEX.test(id))) {
+      return NextResponse.json({ error: "All user_ids must be valid UUIDs" }, { status: 400 });
     }
     if (user_ids.length > 5) {
       return NextResponse.json({ error: "Max 5 witnesses" }, { status: 400 });
@@ -70,9 +74,10 @@ export async function PATCH(req: Request) {
   try {
     const user = await requireAuth();
 
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const { session_id, confirmed } = await req.json();
-    if (!session_id || typeof confirmed !== "boolean") {
-      return NextResponse.json({ error: "session_id and confirmed required" }, { status: 400 });
+    if (!session_id || !UUID_REGEX.test(session_id) || typeof confirmed !== "boolean") {
+      return NextResponse.json({ error: "session_id and confirmed required and session_id must be valid UUID" }, { status: 400 });
     }
 
     const [witness] = await sql`
