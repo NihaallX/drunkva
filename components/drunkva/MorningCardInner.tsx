@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ImagePlus, RotateCcw } from "lucide-react";
 // html2canvas is dynamically imported in exportAndShare to keep it out of the initial bundle.
-import { cn } from "@/lib/utils";
+import { cn, formatLiveDuration } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -236,9 +236,16 @@ export function MorningCardInner() {
     fetch(`/api/sessions/${sessionId}`)
       .then((r) => r.json())
       .then((data) => {
-        setSession(data.session);
+        // Calculate duration if not already set
+        let sessionData = data.session;
+        if (!sessionData.total_duration_seconds && sessionData.start_time && sessionData.end_time) {
+          const startMs = new Date(sessionData.start_time).getTime();
+          const endMs = new Date(sessionData.end_time).getTime();
+          sessionData.total_duration_seconds = Math.floor((endMs - startMs) / 1000);
+        }
+        setSession(sessionData);
         setDrinks(data.drinks ?? []);
-        setVenueName(data.session.venue_name ?? "");
+        setVenueName(sessionData.venue_name ?? "");
         const beerDrinks = (data.drinks ?? []).filter((d: any) => d.type === "beer" && d.duration_seconds != null);
         if (beerDrinks.length > 0) {
           const hasPR = beerDrinks.some((d: any) => d.is_pr === true);
@@ -599,8 +606,8 @@ export function MorningCardInner() {
                   <div className="text-base font-medium text-foreground mt-1">{drinks.length}</div>
                 </div>
                 <div>
-                  <div className="dv-stat-label">Witnesses</div>
-                  <div className="text-base font-medium text-foreground mt-1">0</div>
+                  <div className="dv-stat-label">Washroom</div>
+                  <div className="text-base font-medium text-foreground mt-1">{session.washroom_count || 0}</div>
                 </div>
               </div>
               {/* Drink breakdown chips */}
