@@ -1,7 +1,7 @@
 "use client";
 
 import { reconstructCurve } from "@/lib/confidence";
-import { Stat } from "./shared";
+import { Stat, formatOverlayDuration } from "./shared";
 import type { ShareOverlayDrink, ShareOverlaySession } from "./shared";
 
 export interface FullInfoSelectedStats {
@@ -94,15 +94,6 @@ function buildArc(session: ShareOverlaySession, drinks: ShareOverlayDrink[]) {
   };
 }
 
-function formatDurationCompact(seconds: number | null | undefined): string {
-  if (seconds == null || !Number.isFinite(seconds)) return "-";
-  const totalMinutes = Math.max(0, Math.floor(seconds / 60));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours <= 0) return `${minutes}m`;
-  return `${hours}h ${minutes}m`;
-}
-
 function chaknaLabel(level: string | null | undefined): string {
   if (!level || level === "none") return "None";
   if (level === "light") return `Light ${"\u{1F35F}"}`;
@@ -152,14 +143,14 @@ export function ShareOverlayFullInfo({
     statItems.push({
       key: "duration",
       label: "DURATION",
-      value: formatDurationCompact(session.total_duration_seconds),
+      value: formatOverlayDuration(session.total_duration_seconds),
     });
   }
   if (selectedStats.activeDuration) {
     statItems.push({
       key: "active-duration",
       label: "ACTIVE TIME",
-      value: formatDurationCompact(session.active_duration_seconds),
+      value: formatOverlayDuration(session.active_duration_seconds),
     });
   }
   if (selectedStats.personalBests && prCount > 0) {
