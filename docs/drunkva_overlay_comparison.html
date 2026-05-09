@@ -1,0 +1,158 @@
+
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  .wrap{background:var(--color-background-tertiary);padding:16px 10px;display:flex;flex-direction:column;gap:20px;}
+  .label{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-left:2px;}
+  .sublabel{font-size:11px;color:var(--color-text-secondary);margin-bottom:10px;padding-left:2px;}
+
+  .phone{border-radius:16px;overflow:hidden;border:0.5px solid var(--color-border-secondary);}
+
+  .photo-bg{width:100%;height:340px;background:#1a1c1e;display:flex;flex-direction:column;justify-content:flex-end;position:relative;}
+  .photo-sim{position:absolute;inset:0;background:repeating-linear-gradient(45deg,#1e2022 0px,#1e2022 20px,#232628 20px,#232628 40px);opacity:.6;}
+  .photo-people{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .photo-people span{font-size:48px;opacity:.15;}
+
+  .strava-card{position:relative;z-index:2;margin:0;padding:16px 16px 14px;background:rgba(0,0,0,0.0);}
+  .strava-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .strava-avatar{width:32px;height:32px;border-radius:50%;background:#FC4C02;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#fff;}
+  .strava-user{font-size:13px;font-weight:500;color:#fff;}
+  .strava-meta{font-size:11px;color:rgba(255,255,255,.6);}
+  .strava-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:0.5px solid rgba(255,255,255,.15);padding-top:12px;}
+  .strava-stat{padding:0 12px 0 0;}
+  .strava-stat:first-child{padding-left:0;}
+  .strava-stat-val{font-size:22px;font-weight:500;color:#fff;letter-spacing:-.5px;}
+  .strava-stat-lbl{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+  .strava-orange{color:#FC4C02;}
+
+  .drunkva-card{position:relative;z-index:2;margin:0 10px 12px;padding:14px 16px;background:rgba(18,18,18,.78);border-radius:10px;border:0.5px solid rgba(255,255,255,.1);}
+  .d-header{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+  .d-logo{width:14px;height:14px;}
+  .d-user{font-size:11px;color:rgba(255,255,255,.55);}
+  .d-venue{font-size:10px;color:rgba(255,255,255,.35);margin-left:4px;}
+  .d-title{font-size:12px;color:rgba(255,255,255,.65);margin-bottom:10px;font-style:italic;line-height:1.4;}
+  .d-stage{font-size:30px;font-weight:500;color:#E8621A;letter-spacing:-1px;line-height:1;}
+  .d-pct{font-size:12px;color:rgba(255,255,255,.45);margin-top:2px;margin-bottom:10px;}
+  .d-bar{height:2px;background:rgba(255,255,255,.1);border-radius:1px;margin-bottom:12px;overflow:hidden;}
+  .d-bar-fill{height:100%;width:72%;background:#E8621A;border-radius:1px;}
+  .d-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .d-stat-lbl{font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em;}
+  .d-stat-val{font-size:14px;font-weight:500;color:#fff;margin-top:1px;}
+  .d-stat-unit{font-size:9px;color:rgba(255,255,255,.35);font-weight:400;}
+  .d-pr{font-size:8px;background:#E8621A;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px;vertical-align:middle;}
+  .d-footer{display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,.07);}
+  .d-footer span{font-size:9px;color:rgba(255,255,255,.25);}
+
+  .chosen-tag{display:inline-block;background:#E8621A;color:#fff;font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
+</style>
+
+<div class="wrap">
+
+  <div>
+    <div class="label">Option A — Strava style</div>
+    <div class="sublabel">No card box. Stats float directly on photo, bottom-anchored. Zero background behind text.</div>
+    <div class="phone">
+      <div class="photo-bg">
+        <div class="photo-sim"></div>
+        <div class="photo-people"><span>&#128378;</span></div>
+        <div class="strava-card">
+          <div class="strava-top">
+            <div class="strava-avatar">NK</div>
+            <div>
+              <div class="strava-user">Nihal K.</div>
+              <div class="strava-meta">Brew House · Fri night · Pune</div>
+            </div>
+          </div>
+          <div class="strava-stats">
+            <div class="strava-stat">
+              <div class="strava-stat-val strava-orange">Climax</div>
+              <div class="strava-stat-lbl">Peak stage</div>
+            </div>
+            <div class="strava-stat">
+              <div class="strava-stat-val">6</div>
+              <div class="strava-stat-lbl">Drinks</div>
+            </div>
+            <div class="strava-stat">
+              <div class="strava-stat-val">0:28</div>
+              <div class="strava-stat-lbl">Fastest</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="label">Option B — Drunkva card</div>
+    <div class="sublabel">Semi-transparent frosted card sits on photo. More stats, LLM title, confidence bar. What I showed before.</div>
+    <div class="phone">
+      <div class="photo-bg" style="height:380px;">
+        <div class="photo-sim"></div>
+        <div class="photo-people"><span>&#128378;</span></div>
+        <div class="drunkva-card">
+          <div class="d-header">
+            <svg class="d-logo" viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,12 7,9 1,12" fill="#E8621A"/></svg>
+            <span class="d-user">Nihal K.</span>
+            <span class="d-venue">Brew House, KP</span>
+          </div>
+          <div class="d-title">Six deep, hit Climax by midnight — the Brew House knew your name</div>
+          <div class="d-stage">Climax</div>
+          <div class="d-pct">72% peak confidence</div>
+          <div class="d-bar"><div class="d-bar-fill"></div></div>
+          <div class="d-grid">
+            <div><div class="d-stat-lbl">Drinks</div><div class="d-stat-val">6 <span class="d-stat-unit">beers</span></div></div>
+            <div><div class="d-stat-lbl">Fastest</div><div class="d-stat-val">0:28<span class="d-pr">PR</span></div></div>
+            <div><div class="d-stat-lbl">Duration</div><div class="d-stat-val">2:14 <span class="d-stat-unit">h</span></div></div>
+            <div><div class="d-stat-lbl">Washroom</div><div class="d-stat-val">3</div></div>
+            <div><div class="d-stat-lbl">Burps</div><div class="d-stat-val">7</div></div>
+            <div><div class="d-stat-lbl">Chakna</div><div class="d-stat-val" style="font-size:11px;">Heavy</div></div>
+          </div>
+          <div class="d-footer"><span>Apr 25 · Pune</span><span>DRUNKVA</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="label">Option C — Strava style but Drunkva stats</div>
+    <div class="chosen-tag">recommended</div>
+    <div class="sublabel">No card box. Text floats on photo exactly like Strava. But hero stat is stage name + all Drunkva stats. Best of both.</div>
+    <div class="phone">
+      <div class="photo-bg" style="height:360px;">
+        <div class="photo-sim"></div>
+        <div class="photo-people"><span>&#128378;</span></div>
+        <div class="strava-card" style="padding:16px;">
+          <div class="strava-top">
+            <div class="strava-avatar" style="background:#E8621A;">NK</div>
+            <div>
+              <div class="strava-user">Nihal K.</div>
+              <div class="strava-meta">Brew House · KP · Fri night</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:10px;font-style:italic;">Six deep, hit Climax by midnight — the Brew House knew your name</div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:32px;font-weight:500;color:#E8621A;letter-spacing:-1px;line-height:1;">Climax</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px;">72% peak confidence</div>
+          </div>
+          <div style="height:2px;background:rgba(255,255,255,.12);border-radius:1px;margin-bottom:12px;overflow:hidden;">
+            <div style="height:100%;width:72%;background:#E8621A;border-radius:1px;"></div>
+          </div>
+          <div class="strava-stats" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+            <div class="strava-stat">
+              <div class="strava-stat-val">6</div>
+              <div class="strava-stat-lbl">Drinks</div>
+            </div>
+            <div class="strava-stat">
+              <div class="strava-stat-val">0:28 <span style="font-size:9px;background:#E8621A;color:#fff;padding:1px 5px;border-radius:8px;vertical-align:middle;">PR</span></div>
+              <div class="strava-stat-lbl">Fastest beer</div>
+            </div>
+            <div class="strava-stat">
+              <div class="strava-stat-val">2:14</div>
+              <div class="strava-stat-lbl">Duration hrs</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

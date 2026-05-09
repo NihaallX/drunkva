@@ -1,6 +1,6 @@
 # Drunkva — AI Agent Audit & Codebase Guide
 
-**Last Updated:** May 8, 2026  
+**Last Updated:** May 9, 2026
 **Consolidated From:** DRUNKVA_FULL_STACK_AUDIT.md, docs/AUDIT.md, docs/PERFORMANCE_AUDIT.md  
 **Purpose:** Provide AI agents with complete context about project architecture, technical debt, security posture, and priorities.
 
@@ -84,12 +84,36 @@ This section is the source of truth when it conflicts with older findings below.
 
 ### Remaining high-priority issues
 
+
+### Fixed in May 9, 2026 update (UI/UX & Morning Card)
+
+- **Morning Card flow simplified:**
+   - Merged steps 1 & 2: venue/generate + title display/edit are now a single unified step
+   - Progress bar reduced from 3 steps to 2 (step 1: wrap-up, step 2: photo + share)
+   - All wrap-up content visible at once: stats card, drink breakdown, venue field, title generation
+   - Choose photo button now disabled until title is generated
+- **Session duration display fixed:**
+   - Duration now visible from session start (no longer hidden until first drink logged)
+   - Client-side duration calculation added to morning card: if `total_duration_seconds` is null, calculates from `start_time` and `end_time`
+   - Timer now updates in real-time during active session
+- **StatGrid washroom interaction improved:**
+   - Washroom stat cell now directly clickable with Popover UI showing +/− buttons
+   - No longer requires accessing "More" menu; easier for tap-friendly mobile UX
+   - Count updates immediately and syncs to database via PATCH /api/sessions/[id]
+- **Morning card stats card redesigned:**
+   - Changed from: Duration, Peak, Drinks, Witnesses
+   - Changed to: Duration, Peak, Drinks, Washroom (all actual tracked data)
+   - Hardcoded witnesses value (0) replaced with `session.washroom_count` (tracks actual trips)
+   - Better session summary for users
+
+### Remaining high-priority issues
+
 - Morning-card cron still performs per-session loops and repeated per-session drink fetches (can be batched).
 - html2canvas export path is still heavy and can cause perceived jank on low-end devices.
 - CSP still allows `unsafe-inline` and `unsafe-eval` in production policy.
 - `DELETE /api/profile` still has no dedicated CSRF token defense layer.
 - Document still contains stale sections below that mention already-resolved issues; treat this update section as canonical.
-
+- Witness feature not yet fully operational (functionality exists but not actively used in UX flows)
 ---
 
 ## Project Overview
