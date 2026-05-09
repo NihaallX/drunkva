@@ -198,7 +198,8 @@ export function MorningCardInner() {
       } else {
         setTitle(data.title ?? "");
       }
-    } catch {
+    } catch (err) {
+      console.error("[Title Generation Error]", err instanceof Error ? err.message : String(err));
       setTitle("");
       showToast("Couldn't generate a title - write your own?");
       setTimeout(() => titleInputRef.current?.focus(), 100);
@@ -368,9 +369,14 @@ export function MorningCardInner() {
                   c.style.setProperty(prop, val);
                 }
               }
-            } catch { /* ignore per-node */ }
+            } catch (e) {
+              console.debug("[Style Clone Error]", e instanceof Error ? e.message : String(e));
+              /* skip problematic styles on cloned element */
+            }
           }
-        } catch (e) { console.warn("html2canvas onclone failed", e); }
+        } catch (e) {
+          console.warn("[html2canvas onclone Error]", e instanceof Error ? e.message : String(e));
+        }
       },
     };
 
@@ -379,8 +385,15 @@ export function MorningCardInner() {
       overlayCanvas = await html2canvas(overlayEl, renderOptions);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[html2canvas Render Error]", msg);
       if (/oklab|color-mix/i.test(msg)) {
-        overlayCanvas = await html2canvas(overlayEl, { ...renderOptions, foreignObjectRendering: true });
+        try {
+          console.debug("[html2canvas] Retrying with foreignObjectRendering");
+          overlayCanvas = await html2canvas(overlayEl, { ...renderOptions, foreignObjectRendering: true });
+        } catch (retryErr) {
+          console.error("[html2canvas Retry Failed]", retryErr instanceof Error ? retryErr.message : String(retryErr));
+          throw err;
+        }
       } else { throw err; }
     } finally {
       if (wrapperEl && savedTransform) wrapperEl.style.transform = savedTransform;
@@ -421,7 +434,8 @@ export function MorningCardInner() {
       let canShareFiles = false;
       try {
         canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
-      } catch {
+      } catch (err) {
+        console.debug("[Share Detection Error]", err instanceof Error ? err.message : String(err));
         canShareFiles = false;
       }
 
@@ -445,8 +459,10 @@ export function MorningCardInner() {
     } catch (err: unknown) {
       setExporting(false);
       const e = err as Error | undefined;
-      if (e?.name !== "AbortError") showToast(e?.message ?? "Share failed — try Download instead");
-      console.error("Share error:", err);
+      if (e?.name !== "AbortError") {
+        showToast(e?.message ?? "Share failed — try Download instead");
+        console.error("[Share Handler Error]", e?.message ?? String(err));
+      }
     }
   };
 
@@ -466,9 +482,10 @@ export function MorningCardInner() {
         URL.revokeObjectURL(url);
       }
       if (!witnessShared) setWitnessSheetOpen(true);
-    } catch {
+    } catch (err) {
       setExporting(false);
       showToast("Export failed — please try again");
+      console.error("[Download Handler Error]", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -664,11 +681,21 @@ export function MorningCardInner() {
               onClick={() => handleTemplateSelect("strava")}
               className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
             >
-              <div>
-                <div className="text-[16px] font-semibold text-white">Strava</div>
-                <div className="mt-1 text-[12px] text-[#555]">The classic draggable share look.</div>
+              <div className="min-w-0">
+                <div className="text-[16px] font-semibold text-white truncate">Strava</div>
+                <div className="mt-1 text-[12px] text-[#555] line-clamp-2">The classic draggable share look.</div>
               </div>
-              <div className="h-[84px] w-[48px] shrink-0 rounded-[10px] border-[0.5px] border-[#222] bg-gradient-to-b from-[#1a1a2e] to-[#0f3460]" />
+              <div className="flex h-[84px] w-[52px] shrink-0 flex-col items-center justify-between overflow-hidden rounded-[10px] border-[0.5px] border-[#222] bg-[#0a0a0a] px-2 py-2">
+                <div className="text-[6px] font-semibold leading-none tracking-[0.16em] text-white">DRUNKVA</div>
+                <div className="flex w-full items-end justify-center gap-[2px] pt-1">
+                  <div className="h-[22px] w-[2px] rounded-full bg-[#f97316]/80" />
+                  <div className="h-[34px] w-[2px] rounded-full bg-[#f97316]" />
+                  <div className="h-[18px] w-[2px] rounded-full bg-[#f97316]/70" />
+                </div>
+                <div className="h-[2px] w-full rounded-full bg-white/10">
+                  <div className="h-full w-[72%] rounded-full bg-[#f97316]" />
+                </div>
+              </div>
             </button>
 
             <button
@@ -676,13 +703,17 @@ export function MorningCardInner() {
               onClick={() => handleTemplateSelect("full-info")}
               className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
             >
-              <div>
-                <div className="text-[16px] font-semibold text-white">Full Info</div>
-                <div className="mt-1 text-[12px] text-[#555]">Every stat. For the obsessives.</div>
+              <div className="min-w-0">
+                <div className="text-[16px] font-semibold text-white truncate">Full Info</div>
+                <div className="mt-1 text-[12px] text-[#555] line-clamp-2">Every stat. For the obsessives.</div>
               </div>
-              <div className="flex h-[84px] w-[48px] shrink-0 flex-col justify-between rounded-[10px] border-[0.5px] border-[#222] bg-[#0a0a0a] px-2 py-2">
-                <div className="text-[7px] font-semibold tracking-[0.14em] text-white">DRUNKVA</div>
-                <div className="text-center text-[24px] font-black leading-none text-[#f97316]">74%</div>
+              <div className="flex h-[84px] w-[52px] shrink-0 flex-col justify-between overflow-hidden rounded-[10px] border-[0.5px] border-[#222] bg-[#0a0a0a] px-2 py-2">
+                <div className="whitespace-nowrap text-[6px] font-semibold leading-none tracking-[0.16em] text-white">
+                  DRUNKVA
+                </div>
+                <div className="text-center text-[20px] font-black leading-none tracking-[-0.04em] text-[#f97316]">
+                  74%
+                </div>
                 <div className="h-[2px] rounded-full bg-[#1a1a1a]">
                   <div className="h-full w-[74%] rounded-full bg-[#f97316]" />
                 </div>
