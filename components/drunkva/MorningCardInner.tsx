@@ -9,14 +9,9 @@ import { cn, formatLiveDuration } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const WitnessSheet = dynamic(
   () => import("@/components/drunkva/WitnessSheet").then((module) => module.WitnessSheet),
-  { ssr: false }
-);
-const TemplateA = dynamic(
-  () => import("@/components/drunkva/ShareOverlay/TemplateA").then((module) => module.TemplateA),
   { ssr: false }
 );
 const TemplateC = dynamic(
@@ -32,8 +27,6 @@ const BG_PRESETS = [
   { id: "dark-green", style: "linear-gradient(160deg, #0a1628 0%, #0d2137 50%, #0f3425 100%)" },
   { id: "dark-purple", style: "linear-gradient(160deg, #1a0a2e 0%, #2a1050 50%, #1a0a3a 100%)" },
 ];
-
-type Template = "full" | "minimal";
 
 // Step indicator
 function StepBar({ step }: { step: number }) {
@@ -94,7 +87,6 @@ export function MorningCardInner() {
   const [loadingTitle, setLoadingTitle] = useState(false);
   const [selectedBg, setSelectedBg] = useState<string>("dark-blue");
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
-  const [template, setTemplate] = useState<Template>("full");
   const [exporting, setExporting] = useState(false);
   const [fastestBeerIsPR, setFastestBeerIsPR] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: "" });
@@ -689,19 +681,6 @@ export function MorningCardInner() {
         {/* STEP 2: Overlay + Share (previously step 3) */}
         {step === 2 && (
           <div className="flex flex-col gap-4">
-            {/* Template toggle */}
-            <ToggleGroup type="single" value={template} onValueChange={(v) => v && setTemplate(v as Template)}
-              className="w-full border border-border rounded-[var(--radius-md)] p-0.5 gap-0">
-              <ToggleGroupItem id="template-full" value="full"
-                className="flex-1 h-8 text-xs rounded-[calc(var(--radius-md)-2px)] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                Strava
-              </ToggleGroupItem>
-              <ToggleGroupItem id="template-minimal" value="minimal"
-                className="flex-1 h-8 text-xs rounded-[calc(var(--radius-md)-2px)] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                Clean
-              </ToggleGroupItem>
-            </ToggleGroup>
-
             {/* Background picker */}
             <div className="flex gap-2">
               {BG_PRESETS.map((bg) => (
@@ -770,11 +749,7 @@ export function MorningCardInner() {
 
                 {/* Stats overlay */}
                 <div ref={overlayRef} data-export-overlay="1" className="w-full">
-                  {template === "full" ? (
-                    <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-                  ) : (
-                    <TemplateA session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-                  )}
+                  <TemplateC session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
                 </div>
               </div>
 
