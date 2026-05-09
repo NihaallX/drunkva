@@ -1,6 +1,6 @@
 # Drunkva — AI Agent Audit & Codebase Guide
 
-**Last Updated:** May 9, 2026
+**Last Updated:** May 9, 2026 (Responsive Design Update)
 **Consolidated From:** DRUNKVA_FULL_STACK_AUDIT.md, docs/AUDIT.md, docs/PERFORMANCE_AUDIT.md  
 **Purpose:** Provide AI agents with complete context about project architecture, technical debt, security posture, and priorities.
 
@@ -105,6 +105,16 @@ This section is the source of truth when it conflicts with older findings below.
    - Changed to: Duration, Peak, Drinks, Washroom (all actual tracked data)
    - Hardcoded witnesses value (0) replaced with `session.washroom_count` (tracks actual trips)
    - Better session summary for users
+- **Responsive viewport & safe-area improvements:**
+   - Root container max-width expanded: 390px → 430px (better tablet support while keeping mobile-first)
+   - Root container min-width set to 320px (safeguard for older phones)
+   - All viewport height units migrated from `100vh` to `100dvh` (prevents zoom-on-scroll issues on mobile browsers)
+   - Viewport meta updated with `viewport-fit: cover` (native notch/dynamic island support)
+   - Safe-area inset environment variables integrated:
+     - Root layout: `padding-top: env(safe-area-inset-top)` (reserves space for notch at top)
+     - Bottom navigation: `padding-bottom: env(safe-area-inset-bottom)` (reserves space for gesture bar/home indicator)
+   - Container width classes updated to `w-full` (responsive scaling) replacing hardcoded `max-w-[390px]` in FullInfoStatPicker and simple-auth pages
+   - Share card export templates use internal fixed dimensions (not affected by viewport changes)
 
 ### Remaining high-priority issues
 
@@ -129,7 +139,9 @@ Sign Up/In (Clerk) → Onboarding → Start Session → Log Drinks
   ↓
 Live Confidence Tracking (real-time curve + speed timer + extras)
   ↓
-End Session → Morning Card (3-step share flow with AI title + html2canvas export)
+End Session → Morning Card 20px–430px viewport (mobile to tablet, responsive)
+- **Viewport Units:** 100dvh (fixes zoom-on-scroll issues in mobile browsers)
+- **Safe-Area Integration:** Full support for notches, dynamic islands, and gesture barsitle + html2canvas export)
   ↓
 Social Feed (follow-only, 30s polling for cheers updates)
   ├─ Cheers (like-style toggle)

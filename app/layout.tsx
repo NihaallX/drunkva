@@ -36,6 +36,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
   themeColor: "#E8621A",
 };
 
@@ -113,12 +114,16 @@ export default function RootLayout({
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${barlowCondensed.variable} font-sans`}>
         {/*
           Dark shell + centering container.
-          - `.dark` here activates Tailwind dark: variants for all descendants.
+          - `.dark` activates Tailwind dark: variants for all descendants.
           - The outer div fills the viewport with the dark background on wide screens.
-          - The inner div constrains content to 390px and centers it.
+          - The inner div constrains content to 430px (min 320px) and centers it.
+          - padding-top: env(safe-area-inset-top) accounts for notch/dynamic island.
         */}
-        <div className="dark min-h-screen bg-background flex flex-col items-center">
-          <div className="w-full max-w-[var(--container-w)] flex flex-col min-h-screen relative bg-background overflow-x-clip">
+        <div className="dark min-h-[100dvh] bg-background flex flex-col items-center">
+          <div
+            className="w-full max-w-[430px] min-w-[320px] flex flex-col min-h-[100dvh] relative bg-background overflow-x-clip"
+            style={{ paddingTop: "env(safe-area-inset-top)" }}
+          >
             <Providers>
               {clerkEnabled ? children : <AuthGuard>{children}</AuthGuard>}
               <InstallPrompt />

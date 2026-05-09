@@ -79,7 +79,7 @@ export default function SimpleAuthPage() {
 
   return (
     <div className="min-h-dvh w-full flex items-center justify-center bg-[#0a0a0a] px-4">
-      <div className="w-full max-w-[390px]">
+      <div className="w-full">
         <div className="flex justify-center mb-8">
           <DrunkvaLogo />
         </div>

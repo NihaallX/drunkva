@@ -172,7 +172,7 @@ export function FullInfoStatPicker({ selectedStats, onChange, onBack, onGenerate
   };
 
   return (
-    <div className="mx-auto w-full max-w-[390px]">
+    <div className="mx-auto w-full">
       <div className="mb-4 flex items-center gap-2">
         <button
           type="button"
