@@ -20,9 +20,11 @@
 
 Drunkva is a mobile-first, social session tracker for your nights out. You log drinks in real-time to build a live "confidence curve" that categorizes your night into six distinct stages: Baseline, Bullish, Ascend, Climax, Half-life, and Credits. When the night ends, you export a personalized, AI-captioned photo overlay (the "Morning Card") to share your peak stats with friends. On the platform, a real-time social feed lets you verify sessions with tagged witnesses, view confidence arcs, and "cheers" your friends' nights.
 
+**Responsive & accessible:** Optimized for phones (320px–430px) with full safe-area inset support for notches, dynamic islands, and gesture bars.
+
 ## Screenshots
 
-> Screenshots taken at 390px mobile viewport — the target form factor.
+> Screenshots captured at 390px viewport. App is responsive across 320px–430px (mobile to tablet) with safe-area inset support.
 
 <p align="center">
   <img src="docs/screenshots/session.png" alt="Live Session" width="180" />
@@ -42,11 +44,13 @@ Drunkva is a mobile-first, social session tracker for your nights out. You log d
 * 🚽 Washroom trips, burp counter, and chakna (snack) level tracking
 
 **Share Card**
-* 🖼️ Two overlay templates: Template C (Full story) and Template A (Minimal)
+* 🖼️ Two exportable templates: **Strava-Styled** (draggable confidence curve overlay) and **Full Info** (customizable stat grid)
+* 🎛️ Full Info stat picker: toggle session details (drinks, washroom, venue, personal bests, etc.) before export
 * 🤖 LLM-generated session title via Groq (e.g., "I'm 3 wines in on the rooftop")
 * 📸 `html2canvas` export at 3x density for crisp social sharing
 * 🔗 Web Share API integration with download fallback
-* 📱 Formats supported: 1080x1920 (Story) and 1080x1080 (Square)
+* 🎚️ Pinch-to-scale gestures for precise overlay positioning on Strava template
+* 📱 Fixed export dimensions (1080x1920 Story, 1080x1080 Square) with responsive app shell
 
 **Social**
 * 🔄 Infinite scrolling social feed with 30-second background polling for "cheers" counts
@@ -69,9 +73,12 @@ Drunkva is a mobile-first, social session tracker for your nights out. You log d
 
 **Tech Highlights**
 * Implemented strict hydration mismatch fixes for native dark-mode (`color-scheme: dark`)
+* Responsive viewport units (100dvh) prevent mobile browser zoom-on-scroll jank
+* Safe-area-inset environment variables provide native notch + gesture bar support
 * Uses Vercel Cron (`/api/cron/morning-card`) for automated 10 AM notifications
 * Real-time visibility-state based polling to conserve battery while keeping social feeds alive
 * Client-side offline synchronization queue using `idb`
+* Morning card flow optimized: 2-step unified wrap-up + export (merged from 3-step design)
 
 ## Tech Stack
 
@@ -142,9 +149,13 @@ drunkva/
 **v1 — Current**
 * Live session tracking with drink logging and dynamic confidence arc
 * Offline PWA support with background synchronization queue
-* Shareable morning cards with AI-generated titles and PR badges
+* Shareable morning cards with 2-step wrap-up + template selection flow
+  * Strava-styled draggable overlay (drinks, time, stage, confidence %, PR badge)
+  * Full Info grid with customizable stat toggles (venue, washroom, personal bests, etc.)
+* AI-generated session titles via Groq with customizable pinch-to-scale overlay positioning
 * Social feed with 30s polling, cheers, and mutual follows
 * Witness tagging and session verification with push notifications
+* Responsive design: 320px–430px with safe-area inset support
 
 **v2 — Planned**
 * Group session mode (one person logs for the table)
@@ -156,6 +167,19 @@ drunkva/
 * Year-end Wrapped
 * Venue partnerships and branded overlay themes
 * Native app wrapper via Capacitor
+
+## Deployment
+
+**Live:** https://drunkva-in.vercel.app
+
+**Build & Deploy:**
+```bash
+pnpm install
+pnpm build
+pnpm start
+```
+
+Deployed on Vercel with Edge middleware, serverless functions, and scheduled cron tasks.
 
 ## Contributing
 Pull requests are welcome. Please run `pnpm lint` and `pnpm build` to ensure all checks pass before submitting.
