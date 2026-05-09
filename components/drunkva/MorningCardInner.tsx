@@ -10,6 +10,7 @@ import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FullInfoSelectedStats } from "@/components/drunkva/ShareOverlay/ShareOverlayFullInfo";
+import { ShareCardCanvas } from "@/components/drunkva/ShareOverlay/ShareCardCanvas";
 
 const WitnessSheet = dynamic(
   () => import("@/components/drunkva/WitnessSheet").then((module) => module.WitnessSheet),
@@ -93,14 +94,9 @@ export function MorningCardInner() {
 
   // Refs
   const overlayRef = useRef<HTMLDivElement | null>(null);     // stats overlay only (transparent bg)
-  const wrapperRef = useRef<HTMLDivElement | null>(null);     // the draggable wrapper
   const previewRef = useRef<HTMLDivElement | null>(null);     // the visible preview container
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const isDragging = useRef(false);
-  const dragStart = useRef({ pointerX: 0, pointerY: 0, posX: 0, posY: 0 });
-  const lastPinchDistance = useRef<number | null>(null);
-  const lastTapTime = useRef(0);
   const positionRef = useRef({ x: 0.5, y: 0.25 });
   const scaleRef = useRef(1.0);
 
@@ -122,111 +118,7 @@ export function MorningCardInner() {
   const [toast, setToast] = useState({ visible: false, message: "" });
   const [witnessSheetOpen, setWitnessSheetOpen] = useState(false);
   const [witnessShared, setWitnessShared] = useState(false);
-
-  // Gestures
-  const [position, setPosition] = useState({ x: 0.5, y: 0.25 });
-  const [scale, setScale] = useState(1.0);
-  const [showHint, setShowHint] = useState(true);
-  const canDragOverlay = step === 2 && shareStage === "export";
-
-  useEffect(() => { positionRef.current = position; }, [position]);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowHint(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!canDragOverlay) return;
-    const el = wrapperRef.current;
-    if (!el) return;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        lastPinchDistance.current = Math.sqrt(dx * dx + dy * dy);
-        isDragging.current = false;
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && lastPinchDistance.current !== null) {
-        e.preventDefault();
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const newDistance = Math.sqrt(dx * dx + dy * dy);
-        const ratio = newDistance / lastPinchDistance.current;
-        lastPinchDistance.current = newDistance;
-
-        const newScale = Math.max(0.5, Math.min(1.5, scaleRef.current * ratio));
-        scaleRef.current = newScale;
-        
-        if (wrapperRef.current) {
-          wrapperRef.current.style.transform = `translate(-50%, 0) scale(${newScale})`;
-        }
-      }
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (e.touches.length < 2) {
-        lastPinchDistance.current = null;
-        setScale(scaleRef.current);
-      }
-    };
-
-    el.addEventListener('touchstart', handleTouchStart, { passive: false });
-    el.addEventListener('touchmove', handleTouchMove, { passive: false });
-    el.addEventListener('touchend', handleTouchEnd);
-
-    return () => {
-      el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchmove', handleTouchMove);
-      el.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [canDragOverlay]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!e.isPrimary) return;
-    setShowHint(false);
-    isDragging.current = true;
-    dragStart.current = {
-      pointerX: e.clientX,
-      pointerY: e.clientY,
-      posX: positionRef.current.x,
-      posY: positionRef.current.y,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging.current || !previewRef.current) return;
-    const container = previewRef.current.getBoundingClientRect();
-    const deltaX = (e.clientX - dragStart.current.pointerX) / (container.width * scaleRef.current);
-    const deltaY = (e.clientY - dragStart.current.pointerY) / (container.height * scaleRef.current);
-    
-    const newX = Math.max(0.1, Math.min(0.9, dragStart.current.posX + deltaX));
-    const newY = Math.max(0.05, Math.min(0.85, dragStart.current.posY + deltaY));
-
-    positionRef.current = { x: newX, y: newY };
-    if (wrapperRef.current) {
-      wrapperRef.current.style.left = `${newX * 100}%`;
-      wrapperRef.current.style.top = `${newY * 100}%`;
-    }
-  };
-
-  const handlePointerUp = () => {
-    isDragging.current = false;
-    setPosition(positionRef.current);
-    
-    const now = Date.now();
-    if (now - lastTapTime.current < 300) {
-      setPosition({ x: 0.5, y: 0.25 });
-      setScale(1.0);
-    }
-    lastTapTime.current = now;
-  };
+  const [resetKey, setResetKey] = useState(0);
 
   const showToast = (message: string) => {
     setToast({ visible: true, message });
@@ -393,6 +285,12 @@ export function MorningCardInner() {
     overlayEl.style.width = `${captureWidth}px`;
     overlayEl.setAttribute("data-export-root", "1");
 
+    const wrapperEl = document.getElementById("share-card-wrapper");
+    const savedTransform = wrapperEl?.style.transform;
+    if (wrapperEl) {
+      wrapperEl.style.transform = "translate(-50%, 0) scale(1)";
+    }
+
     const html2canvas = (await import("html2canvas")).default;
     const colorCanvas = document.createElement("canvas");
     const colorCtx = colorCanvas.getContext("2d");
@@ -485,6 +383,7 @@ export function MorningCardInner() {
         overlayCanvas = await html2canvas(overlayEl, { ...renderOptions, foreignObjectRendering: true });
       } else { throw err; }
     } finally {
+      if (wrapperEl && savedTransform) wrapperEl.style.transform = savedTransform;
       overlayEl.removeAttribute("data-export-root");
       overlayEl.style.fontFamily = savedFont;
       overlayEl.style.width = savedW;
@@ -575,16 +474,13 @@ export function MorningCardInner() {
 
   const handleTemplateSelect = (template: ShareTemplate) => {
     setSelectedTemplate(template);
-    setPosition({ x: 0.5, y: 0.25 });
-    setScale(1.0);
+    setResetKey(k => k + 1);
 
     if (template === "full-info") {
-      setShowHint(false);
       setShareStage("picker");
       return;
     }
 
-    setShowHint(true);
     setShareStage("export");
   };
 
@@ -833,80 +729,31 @@ export function MorningCardInner() {
               </label>
             </div>
 
-            <div
-              ref={previewRef}
-              className={cn(
-                "relative w-full overflow-hidden bg-black",
-                "rounded-xl"
-              )}
-              style={{ aspectRatio: "9/16", ...bgStyle }}
-            >
-              <>
-                {userPhoto && (
-                  <img
-                    src={userPhoto}
-                    alt="Background"
-                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                  />
-                )}
-
-                <div
-                  ref={wrapperRef}
-                  className="absolute w-full cursor-grab active:cursor-grabbing select-none touch-none z-10"
-                  style={{
-                    left: `${position.x * 100}%`,
-                    top: `${position.y * 100}%`,
-                    transform: `translate(-50%, 0) scale(${scale})`,
-                    transformOrigin: "top center",
-                    willChange: "transform",
-                  }}
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerUp}
-                >
-                  <div
-                    data-html2canvas-ignore
-                    className="flex justify-center mb-2 opacity-50 pointer-events-none"
-                  >
-                    <div className="w-8 h-1 rounded-full bg-white shadow-sm" />
-                  </div>
-
-                  <div ref={overlayRef} data-export-overlay="1" className="w-full">
-                    {selectedTemplate === "strava" ? (
-                      <StravaStyledTemplate session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
-                    ) : (
-                      <ShareOverlayFullInfo
-                        session={session}
-                        drinks={drinks}
-                        witnesses={witnesses}
-                        selectedStats={selectedStats}
-                        sessionTitle={title}
-                        venueName={venueName}
-                      />
-                    )}
-                  </div>
+            <div ref={previewRef} className="w-full">
+              <ShareCardCanvas
+                backgroundSrc={userPhoto}
+                containerStyle={bgStyle}
+                resetKey={resetKey}
+                onTransformChange={(s, x, y) => {
+                  scaleRef.current = s;
+                  positionRef.current = { x, y };
+                }}
+              >
+                <div ref={overlayRef} data-export-overlay="1" className="w-full">
+                  {selectedTemplate === "strava" ? (
+                    <StravaStyledTemplate session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                  ) : (
+                    <ShareOverlayFullInfo
+                      session={session}
+                      drinks={drinks}
+                      witnesses={witnesses}
+                      selectedStats={selectedStats}
+                      sessionTitle={title}
+                      venueName={venueName}
+                    />
+                  )}
                 </div>
-
-                <button
-                  onClick={() => { setPosition({ x: 0.5, y: 0.25 }); setScale(1.0); }}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 flex items-center justify-center z-20 transition-transform active:scale-90"
-                  aria-label="Reset overlay position"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-white/70" />
-                </button>
-
-                {showHint && (
-                  <div
-                    className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-20"
-                    style={{ animation: "fadeOut 2.5s forwards" }}
-                  >
-                    <div className="bg-black/60 text-white/90 text-xs px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
-                      Drag to move &middot; Pinch to resize
-                    </div>
-                  </div>
-                )}
-              </>
+              </ShareCardCanvas>
             </div>
 
             <div className="flex gap-2">
