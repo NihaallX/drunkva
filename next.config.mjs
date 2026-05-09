@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const securityHeaders = [
   // Prevent browsers from MIME-sniffing responses away from the declared content-type
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -25,9 +27,9 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Next.js requires 'unsafe-inline' and 'unsafe-eval' for dev HMR; nonces are preferred for prod.
+      // Next.js requires 'unsafe-inline' and 'unsafe-eval' for dev HMR; prod drops unsafe-eval.
       // va.vercel-scripts.com is required for Vercel Web Analytics.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.com https://*.clerk.accounts.dev https://va.vercel-scripts.com",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://clerk.com https://*.clerk.accounts.dev https://va.vercel-scripts.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // data: is required — Next.js self-hosts Google Fonts as data:font/woff2;base64 URIs.
       "font-src 'self' data: https://fonts.gstatic.com",

@@ -78,6 +78,26 @@ export async function GET(req: Request) {
     notified++;
   };
 
+  const loadDrinksBySessionIds = async (sessionIds: string[]) => {
+    if (sessionIds.length === 0) return new Map<string, SessionDrinkTime[]>();
+
+    const rows = (await sql`
+      SELECT session_id, logged_at
+      FROM drinks
+      WHERE session_id = ANY(${sessionIds}::uuid[])
+      ORDER BY session_id ASC, logged_at ASC
+    `) as Array<{ session_id: string; logged_at: string }>;
+
+    const drinksBySessionId = new Map<string, SessionDrinkTime[]>();
+    for (const row of rows) {
+      const drinks = drinksBySessionId.get(row.session_id) ?? [];
+      drinks.push({ logged_at: row.logged_at });
+      drinksBySessionId.set(row.session_id, drinks);
+    }
+
+    return drinksBySessionId;
+  };
+
   // Level 3: stale open sessions with no drinks older than 48h are discarded.
   const deletedStale = await sql`
     DELETE FROM sessions s
@@ -97,15 +117,30 @@ export async function GET(req: Request) {
       AND s.start_time < NOW() - INTERVAL '12 hours'
   `;
 
+  const softCutoffSessions = await sql`
+    SELECT
+      s.id,
+      s.user_id,
+      s.start_time,
+      s.venue_name,
+      s.peak_stage,
+      MAX(d.logged_at) AS last_drink_at
+    FROM sessions s
+    JOIN drinks d ON d.session_id = s.id
+    WHERE s.end_time IS NULL
+      AND s.start_time >= NOW() - INTERVAL '12 hours'
+    GROUP BY s.id, s.user_id, s.start_time, s.venue_name, s.peak_stage
+    HAVING MAX(d.logged_at) < NOW() - INTERVAL '4 hours'
+  `;
+
+  const drinksBySessionId = await loadDrinksBySessionIds([
+    ...new Set([...hardCutoffSessions.map((session) => session.id), ...softCutoffSessions.map((session) => session.id)]),
+  ]);
+
   let hardClosed = 0;
   for (const session of hardCutoffSessions) {
     const endTime = new Date(new Date(session.start_time).getTime() + 12 * 60 * 60 * 1000).toISOString();
-    const drinks = (await sql`
-      SELECT logged_at
-      FROM drinks
-      WHERE session_id = ${session.id}
-      ORDER BY logged_at ASC
-    `) as SessionDrinkTime[];
+    const drinks = drinksBySessionId.get(session.id) ?? [];
 
     const totalDurationSeconds = calculateTotalDurationSeconds(session.start_time, endTime);
     const activeDurationSeconds = calculateActiveDurationSeconds(session.start_time, drinks, endTime);
@@ -123,33 +158,12 @@ export async function GET(req: Request) {
   }
 
   // Level 1: no drink for 4h -> auto-end at last_drink + 4h and notify now.
-  const softCutoffSessions = await sql`
-    SELECT
-      s.id,
-      s.user_id,
-      s.start_time,
-      s.venue_name,
-      s.peak_stage,
-      MAX(d.logged_at) AS last_drink_at
-    FROM sessions s
-    JOIN drinks d ON d.session_id = s.id
-    WHERE s.end_time IS NULL
-      AND s.start_time >= NOW() - INTERVAL '12 hours'
-    GROUP BY s.id, s.user_id, s.start_time, s.venue_name, s.peak_stage
-    HAVING MAX(d.logged_at) < NOW() - INTERVAL '4 hours'
-  `;
-
   let softClosed = 0;
   for (const session of softCutoffSessions) {
     if (!session.last_drink_at) continue;
 
     const endTime = new Date(new Date(session.last_drink_at).getTime() + 4 * 60 * 60 * 1000).toISOString();
-    const drinks = (await sql`
-      SELECT logged_at
-      FROM drinks
-      WHERE session_id = ${session.id}
-      ORDER BY logged_at ASC
-    `) as SessionDrinkTime[];
+    const drinks = drinksBySessionId.get(session.id) ?? [];
 
     const totalDurationSeconds = calculateTotalDurationSeconds(session.start_time, endTime);
     const activeDurationSeconds = calculateActiveDurationSeconds(session.start_time, drinks, endTime);
