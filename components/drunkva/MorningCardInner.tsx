@@ -9,6 +9,7 @@ import { cn, formatLiveDuration } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { FullInfoSelectedStats } from "@/components/drunkva/ShareOverlay/ShareOverlayFullInfo";
 
 const WitnessSheet = dynamic(
   () => import("@/components/drunkva/WitnessSheet").then((module) => module.WitnessSheet),
@@ -16,6 +17,14 @@ const WitnessSheet = dynamic(
 );
 const StravaStyledTemplate = dynamic(
   () => import("@/components/drunkva/ShareOverlay/TemplateC").then((module) => module.StravaStyledTemplate),
+  { ssr: false }
+);
+const FullInfoStatPicker = dynamic(
+  () => import("@/components/drunkva/FullInfoStatPicker").then((module) => module.FullInfoStatPicker),
+  { ssr: false }
+);
+const ShareOverlayFullInfo = dynamic(
+  () => import("@/components/drunkva/ShareOverlay/ShareOverlayFullInfo").then((module) => module.ShareOverlayFullInfo),
   { ssr: false }
 );
 
@@ -27,6 +36,22 @@ const BG_PRESETS = [
   { id: "dark-green", style: "linear-gradient(160deg, #0a1628 0%, #0d2137 50%, #0f3425 100%)" },
   { id: "dark-purple", style: "linear-gradient(160deg, #1a0a2e 0%, #2a1050 50%, #1a0a3a 100%)" },
 ];
+
+type ShareTemplate = "strava" | "full-info";
+type ShareStage = "template" | "picker" | "export";
+
+const DEFAULT_FULL_INFO_STATS: FullInfoSelectedStats = {
+  duration: true,
+  activeDuration: true,
+  drinkBreakdown: true,
+  personalBests: true,
+  washroomCount: true,
+  burpCount: true,
+  chaknaLevel: true,
+  witnesses: true,
+  venue: true,
+  sessionTitle: true,
+};
 
 // Step indicator
 function StepBar({ step }: { step: number }) {
@@ -82,11 +107,15 @@ export function MorningCardInner() {
   const [step, setStep] = useState<1 | 2>(1);
   const [session, setSession] = useState<any>(null);
   const [drinks, setDrinks] = useState<any[]>([]);
+  const [witnesses, setWitnesses] = useState<any[]>([]);
   const [venueName, setVenueName] = useState("");
   const [title, setTitle] = useState("");
   const [loadingTitle, setLoadingTitle] = useState(false);
   const [selectedBg, setSelectedBg] = useState<string>("dark-blue");
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<ShareTemplate>("strava");
+  const [shareStage, setShareStage] = useState<ShareStage>("template");
+  const [selectedStats, setSelectedStats] = useState<FullInfoSelectedStats>(DEFAULT_FULL_INFO_STATS);
   const [exporting, setExporting] = useState(false);
   const [fastestBeerIsPR, setFastestBeerIsPR] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: "" });
@@ -97,6 +126,7 @@ export function MorningCardInner() {
   const [position, setPosition] = useState({ x: 0.5, y: 0.25 });
   const [scale, setScale] = useState(1.0);
   const [showHint, setShowHint] = useState(true);
+  const canDragOverlay = step === 2 && shareStage === "export" && selectedTemplate === "strava";
 
   useEffect(() => { positionRef.current = position; }, [position]);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
@@ -107,6 +137,7 @@ export function MorningCardInner() {
   }, []);
 
   useEffect(() => {
+    if (!canDragOverlay) return;
     const el = wrapperRef.current;
     if (!el) return;
 
@@ -153,7 +184,7 @@ export function MorningCardInner() {
       el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
     };
-  }, []);
+  }, [canDragOverlay]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!e.isPrimary) return;
@@ -237,6 +268,7 @@ export function MorningCardInner() {
         }
         setSession(sessionData);
         setDrinks(data.drinks ?? []);
+        setWitnesses(data.witnesses ?? []);
         setVenueName(sessionData.venue_name ?? "");
         const beerDrinks = (data.drinks ?? []).filter((d: any) => d.type === "beer" && d.duration_seconds != null);
         if (beerDrinks.length > 0) {
@@ -309,44 +341,47 @@ export function MorningCardInner() {
     exportCanvas.width = EXPORT_W;
     exportCanvas.height = EXPORT_H;
     const ctx = exportCanvas.getContext("2d")!;
+    const isFullInfoTemplate = selectedTemplate === "full-info";
 
-    if (userPhoto) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = userPhoto;
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error("Photo failed to load"));
-      });
-      const imgAspect = img.naturalWidth / img.naturalHeight;
-      const canvasAspect = EXPORT_W / EXPORT_H;
-      let drawW: number, drawH: number, drawX: number, drawY: number;
-      if (imgAspect > canvasAspect) {
-        drawH = EXPORT_H; drawW = drawH * imgAspect;
-        drawX = (EXPORT_W - drawW) / 2; drawY = 0;
+    if (!isFullInfoTemplate) {
+      if (userPhoto) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = userPhoto;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Photo failed to load"));
+        });
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const canvasAspect = EXPORT_W / EXPORT_H;
+        let drawW: number, drawH: number, drawX: number, drawY: number;
+        if (imgAspect > canvasAspect) {
+          drawH = EXPORT_H; drawW = drawH * imgAspect;
+          drawX = (EXPORT_W - drawW) / 2; drawY = 0;
+        } else {
+          drawW = EXPORT_W; drawH = drawW / imgAspect;
+          drawX = 0; drawY = (EXPORT_H - drawH) / 2;
+        }
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
       } else {
-        drawW = EXPORT_W; drawH = drawW / imgAspect;
-        drawX = 0; drawY = (EXPORT_H - drawH) / 2;
+        const gradColors: Record<string, [string, string, string]> = {
+          "dark-blue":   ["#1a1a2e", "#16213e", "#0f3460"],
+          "dark-green":  ["#0a1628", "#0d2137", "#0f3425"],
+          "dark-purple": ["#1a0a2e", "#2a1050", "#1a0a3a"],
+        };
+        const [c0, c1, c2] = gradColors[selectedBg] ?? gradColors["dark-blue"];
+        const grad = ctx.createLinearGradient(0, 0, EXPORT_W * 0.6, EXPORT_H);
+        grad.addColorStop(0, c0); grad.addColorStop(0.5, c1); grad.addColorStop(1, c2);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
       }
-      ctx.drawImage(img, drawX, drawY, drawW, drawH);
-    } else {
-      const gradColors: Record<string, [string, string, string]> = {
-        "dark-blue":   ["#1a1a2e", "#16213e", "#0f3460"],
-        "dark-green":  ["#0a1628", "#0d2137", "#0f3425"],
-        "dark-purple": ["#1a0a2e", "#2a1050", "#1a0a3a"],
-      };
-      const [c0, c1, c2] = gradColors[selectedBg] ?? gradColors["dark-blue"];
-      const grad = ctx.createLinearGradient(0, 0, EXPORT_W * 0.6, EXPORT_H);
-      grad.addColorStop(0, c0); grad.addColorStop(0.5, c1); grad.addColorStop(1, c2);
-      ctx.fillStyle = grad;
+      const scrim = ctx.createLinearGradient(0, EXPORT_H * 0.25, 0, EXPORT_H * 0.7);
+      scrim.addColorStop(0, "rgba(0,0,0,0)");
+      scrim.addColorStop(0.5, "rgba(0,0,0,0.3)");
+      scrim.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = scrim;
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
     }
-    const scrim = ctx.createLinearGradient(0, EXPORT_H * 0.25, 0, EXPORT_H * 0.7);
-    scrim.addColorStop(0, "rgba(0,0,0,0)");
-    scrim.addColorStop(0.5, "rgba(0,0,0,0.3)");
-    scrim.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = scrim;
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
 
     const currentPos = positionRef.current;
     const currentScale = scaleRef.current;
@@ -454,11 +489,13 @@ export function MorningCardInner() {
       overlayEl.style.width = savedW;
     }
 
-    const overlayCanvasWidth = EXPORT_W * currentScale;
-    const overlayCanvasHeight = (overlayCanvas.height / overlayCanvas.width) * overlayCanvasWidth;
+    const overlayCanvasWidth = isFullInfoTemplate ? EXPORT_W : EXPORT_W * currentScale;
+    const overlayCanvasHeight = isFullInfoTemplate
+      ? EXPORT_H
+      : (overlayCanvas.height / overlayCanvas.width) * overlayCanvasWidth;
 
-    const overlayX = (currentPos.x * EXPORT_W) - (overlayCanvasWidth / 2);
-    const overlayYPx = currentPos.y * EXPORT_H;
+    const overlayX = isFullInfoTemplate ? 0 : (currentPos.x * EXPORT_W) - (overlayCanvasWidth / 2);
+    const overlayYPx = isFullInfoTemplate ? 0 : currentPos.y * EXPORT_H;
 
     ctx.drawImage(
       overlayCanvas,
@@ -535,6 +572,44 @@ export function MorningCardInner() {
     }
   };
 
+  const handleTemplateSelect = (template: ShareTemplate) => {
+    setSelectedTemplate(template);
+    setPosition({ x: 0.5, y: 0.25 });
+    setScale(1.0);
+
+    if (template === "full-info") {
+      setShowHint(false);
+      setShareStage("picker");
+      return;
+    }
+
+    setShowHint(true);
+    setShareStage("export");
+  };
+
+  const handleNavBack = () => {
+    if (step === 1) {
+      router.back();
+      return;
+    }
+
+    if (shareStage === "picker") {
+      setShareStage("template");
+      return;
+    }
+
+    if (shareStage === "export") {
+      if (selectedTemplate === "full-info") {
+        setShareStage("picker");
+      } else {
+        setShareStage("template");
+      }
+      return;
+    }
+
+    setStep(1);
+  };
+
   const bgStyle: React.CSSProperties = userPhoto
     ? { backgroundImage: `url(${userPhoto})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { background: BG_PRESETS.find((b) => b.id === selectedBg)?.style ?? BG_PRESETS[0].style };
@@ -557,7 +632,7 @@ export function MorningCardInner() {
 
       {/* Nav */}
       <div className="dv-nav flex items-center gap-3 px-4 py-3">
-        <Button variant="ghost" size="icon-sm" onClick={() => router.back()} className="text-muted-foreground">
+        <Button variant="ghost" size="icon-sm" onClick={handleNavBack} className="text-muted-foreground">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -663,123 +738,184 @@ export function MorningCardInner() {
               {loadingTitle ? "⏳ Generating..." : "✦ Generate title"}
             </Button>
 
-            {/* Choose photo button - disabled until title generated */}
+            {/* Choose template button - disabled until title generated */}
             <Button
               id="choose-photo-btn"
-              onClick={() => setStep(2)}
+              onClick={() => {
+                setStep(2);
+                setShareStage("template");
+              }}
               disabled={!title || loadingTitle}
               className={cn(
                 "h-12 text-[15px] font-medium bg-primary text-primary-foreground active:bg-primary/90",
                 (!title || loadingTitle) && "opacity-40 pointer-events-none"
               )}
             >
-              Choose photo →
+              Choose template →
             </Button>
           </div>
         )}
-
-        {/* STEP 2: Overlay + Share (previously step 3) */}
-        {step === 2 && (
+        {step === 2 && shareStage === "template" && (
           <div className="flex flex-col gap-4">
-            {/* Background picker */}
-            <div className="flex gap-2">
-              {BG_PRESETS.map((bg) => (
-                <button
-                  key={bg.id}
-                  id={`bg-${bg.id}`}
-                  onClick={() => { setSelectedBg(bg.id); setUserPhoto(null); }}
-                  className={cn(
-                    "size-10 rounded-lg border cursor-pointer transition-all",
-                    selectedBg === bg.id && !userPhoto ? "border-2 border-primary" : "border-border"
-                  )}
-                  style={{ background: bg.style }}
-                />
-              ))}
-              <label className={cn(
-                "size-10 rounded-lg border cursor-pointer flex items-center justify-center bg-card transition-all",
-                userPhoto ? "border-2 border-primary" : "border-border"
-              )}>
-                <ImagePlus className="size-4 text-muted-foreground" aria-hidden="true" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoSelect}
-                />
-              </label>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Choose a template</h2>
+              <p className="mt-1 text-[13px] text-muted-foreground">Pick your style before exporting</p>
             </div>
 
-            {/* Preview — 9:16 container with draggable overlay */}
-            <div
-              ref={previewRef}
-              className="relative w-full overflow-hidden rounded-xl bg-black"
-              style={{ aspectRatio: "9/16", ...bgStyle }}
+            <button
+              type="button"
+              onClick={() => handleTemplateSelect("strava")}
+              className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
             >
-              {userPhoto && (
-                <img
-                  src={userPhoto}
-                  alt="Background"
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                />
-              )}
+              <div>
+                <div className="text-[16px] font-semibold text-white">Strava</div>
+                <div className="mt-1 text-[12px] text-[#555]">The classic draggable share look.</div>
+              </div>
+              <div className="h-[84px] w-[48px] shrink-0 rounded-[10px] border-[0.5px] border-[#222] bg-gradient-to-b from-[#1a1a2e] to-[#0f3460]" />
+            </button>
 
-              {/* Draggable stats overlay */}
-              <div
-                ref={wrapperRef}
-                className="absolute w-full cursor-grab active:cursor-grabbing select-none touch-none z-10"
-                style={{
-                  left: `${position.x * 100}%`,
-                  top: `${position.y * 100}%`,
-                  transform: `translate(-50%, 0) scale(${scale})`,
-                  transformOrigin: "top center",
-                  willChange: "transform",
-                }}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerUp}
-              >
-                {/* Drag handle */}
-                <div
-                  data-html2canvas-ignore
-                  className="flex justify-center mb-2 opacity-50 pointer-events-none"
-                >
-                  <div className="w-8 h-1 rounded-full bg-white shadow-sm" />
-                </div>
-
-                {/* Stats overlay */}
-                <div ref={overlayRef} data-export-overlay="1" className="w-full">
-                  <StravaStyledTemplate session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+            <button
+              type="button"
+              onClick={() => handleTemplateSelect("full-info")}
+              className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
+            >
+              <div>
+                <div className="text-[16px] font-semibold text-white">Full Info</div>
+                <div className="mt-1 text-[12px] text-[#555]">Every stat. For the obsessives.</div>
+              </div>
+              <div className="flex h-[84px] w-[48px] shrink-0 flex-col justify-between rounded-[10px] border-[0.5px] border-[#222] bg-[#0a0a0a] px-2 py-2">
+                <div className="text-[7px] font-semibold tracking-[0.14em] text-white">DRUNKVA</div>
+                <div className="text-center text-[24px] font-black leading-none text-[#f97316]">74%</div>
+                <div className="h-[2px] rounded-full bg-[#1a1a1a]">
+                  <div className="h-full w-[74%] rounded-full bg-[#f97316]" />
                 </div>
               </div>
+            </button>
+          </div>
+        )}
 
-              {/* Reset button fallback */}
-              <button
-                onClick={() => { setPosition({ x: 0.5, y: 0.25 }); setScale(1.0); }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 
-                           flex items-center justify-center z-20 transition-transform active:scale-90"
-                aria-label="Reset overlay position"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-white/70" />
-              </button>
+        {step === 2 && shareStage === "picker" && selectedTemplate === "full-info" && (
+          <FullInfoStatPicker
+            selectedStats={selectedStats}
+            onChange={setSelectedStats}
+            onBack={() => setShareStage("template")}
+            onGenerate={() => setShareStage("export")}
+          />
+        )}
 
-              {/* Gesture Hint */}
-              {showHint && (
-                <div
-                  className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-20"
-                  style={{ animation: 'fadeOut 2.5s forwards' }}
-                >
-                  <div className="bg-black/60 text-white/90 text-xs px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
-                    Drag to move &middot; Pinch to resize
+        {step === 2 && shareStage === "export" && (
+          <div className="flex flex-col gap-4">
+            {selectedTemplate === "strava" && (
+              <div className="flex gap-2">
+                {BG_PRESETS.map((bg) => (
+                  <button
+                    key={bg.id}
+                    id={`bg-${bg.id}`}
+                    onClick={() => { setSelectedBg(bg.id); setUserPhoto(null); }}
+                    className={cn(
+                      "size-10 rounded-lg border cursor-pointer transition-all",
+                      selectedBg === bg.id && !userPhoto ? "border-2 border-primary" : "border-border"
+                    )}
+                    style={{ background: bg.style }}
+                  />
+                ))}
+                <label className={cn(
+                  "size-10 rounded-lg border cursor-pointer flex items-center justify-center bg-card transition-all",
+                  userPhoto ? "border-2 border-primary" : "border-border"
+                )}>
+                  <ImagePlus className="size-4 text-muted-foreground" aria-hidden="true" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+                </label>
+              </div>
+            )}
+
+            <div
+              ref={previewRef}
+              className={cn(
+                "relative w-full overflow-hidden bg-black",
+                selectedTemplate === "strava" ? "rounded-xl" : "rounded-[18px]"
+              )}
+              style={selectedTemplate === "strava" ? { aspectRatio: "9/16", ...bgStyle } : { aspectRatio: "9/16" }}
+            >
+              {selectedTemplate === "strava" ? (
+                <>
+                  {userPhoto && (
+                    <img
+                      src={userPhoto}
+                      alt="Background"
+                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                    />
+                  )}
+
+                  <div
+                    ref={wrapperRef}
+                    className="absolute w-full cursor-grab active:cursor-grabbing select-none touch-none z-10"
+                    style={{
+                      left: `${position.x * 100}%`,
+                      top: `${position.y * 100}%`,
+                      transform: `translate(-50%, 0) scale(${scale})`,
+                      transformOrigin: "top center",
+                      willChange: "transform",
+                    }}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                  >
+                    <div
+                      data-html2canvas-ignore
+                      className="flex justify-center mb-2 opacity-50 pointer-events-none"
+                    >
+                      <div className="w-8 h-1 rounded-full bg-white shadow-sm" />
+                    </div>
+
+                    <div ref={overlayRef} data-export-overlay="1" className="w-full">
+                      <StravaStyledTemplate session={session} drinks={drinks} fastestBeerIsPR={fastestBeerIsPR} />
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => { setPosition({ x: 0.5, y: 0.25 }); setScale(1.0); }}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 flex items-center justify-center z-20 transition-transform active:scale-90"
+                    aria-label="Reset overlay position"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-white/70" />
+                  </button>
+
+                  {showHint && (
+                    <div
+                      className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-20"
+                      style={{ animation: "fadeOut 2.5s forwards" }}
+                    >
+                      <div className="bg-black/60 text-white/90 text-xs px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
+                        Drag to move &middot; Pinch to resize
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div ref={overlayRef} data-export-overlay="1" className="h-full w-full">
+                  <ShareOverlayFullInfo
+                    session={session}
+                    drinks={drinks}
+                    witnesses={witnesses}
+                    selectedStats={selectedStats}
+                    sessionTitle={title}
+                    venueName={venueName}
+                  />
                 </div>
               )}
             </div>
 
-            {/* Share + Download buttons */}
             <div className="flex gap-2">
               <Button
                 id="export-share-btn"
+                onClick={handleShare}
                 disabled={exporting}
                 className="flex-1 bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium"
               >
