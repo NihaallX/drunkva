@@ -1,6 +1,6 @@
 "use client";
 
-import ReactLenis from "lenis/react";
+import ReactLenis from "lenis/dist/lenis-react.mjs";
 
 export default function SmoothScrollProvider({
   children,
