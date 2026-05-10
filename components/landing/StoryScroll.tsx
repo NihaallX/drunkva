@@ -184,6 +184,44 @@ function Divider({ color = "rgba(255,255,255,0.12)" }: { color?: string }) {
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
 export default function StoryScroll() {
+  const [landingStats, setLandingStats] = useState({ nightsTracked: 2400, drinksLogged: 18 });
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadStats = async () => {
+      try {
+        const res = await fetch("/api/landing-stats", {
+          method: "GET",
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+
+        const data = (await res.json()) as {
+          nightsTracked?: number;
+          drinksLogged?: number;
+        };
+
+        setLandingStats({
+          nightsTracked:
+            typeof data.nightsTracked === "number" && Number.isFinite(data.nightsTracked)
+              ? Math.max(0, Math.floor(data.nightsTracked))
+              : 0,
+          drinksLogged:
+            typeof data.drinksLogged === "number" && Number.isFinite(data.drinksLogged)
+              ? Math.max(0, Math.floor(data.drinksLogged))
+              : 0,
+        });
+      } catch {
+        // Keep fallback values if stats endpoint is unavailable.
+      }
+    };
+
+    loadStats();
+    return () => controller.abort();
+  }, []);
+
   return (
     <FlowArt aria-label="Drunkva story">
 
@@ -471,8 +509,8 @@ export default function StoryScroll() {
         <Divider color="rgba(255,255,255,0.2)" />
         <div className="flex flex-wrap gap-[4vw]">
           {[
-            { value: "2,400+", label: "Nights tracked" },
-            { value: "18", label: "Countries" },
+            { value: landingStats.nightsTracked.toLocaleString("en-IN"), label: "Nights tracked" },
+            { value: landingStats.drinksLogged.toLocaleString("en-IN"), label: "Drinks logged" },
             { value: "0", label: "Regrets" },
           ].map((s) => (
             <div key={s.label} className="min-w-[100px]">
