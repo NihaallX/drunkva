@@ -1,36 +1,42 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const isClerkEnabled = process.env.NEXT_PUBLIC_CLERK_ENABLED === "true";
+/**
+ * Generate a cryptographically secure random nonce for Content-Security-Policy.
+ * Used to restrict inline scripts/styles to only those with the matching nonce attribute.
+ */
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
-const isPrivateRoute = createRouteMatcher([
-  "/session(.*)",
-  "/feed(.*)",
-  "/profile(.*)",
-  "/morning-card(.*)",
-  "/onboarding(.*)",
-  "/api/sessions(.*)",
-  "/api/drinks(.*)",
-  "/api/feed(.*)",
-  "/api/cheers(.*)",
-  "/api/follow(.*)",
-  "/api/profile(.*)",
-  "/api/title(.*)",
-  "/api/push(.*)",
-]);
+export function middleware(req: NextRequest) {
+  const response = NextResponse.next();
+  const nonce = generateNonce();
+  response.headers.set("x-nonce", nonce);
 
-// When Clerk is disabled (NEXT_PUBLIC_CLERK_ENABLED != true), pass all requests through.
-// This allows testing every screen locally without real Clerk credentials.
-export default isClerkEnabled
-  ? clerkMiddleware(async (auth, req) => {
-      if (isPrivateRoute(req)) {
-        await auth.protect();
-      }
-    })
-  : function middleware(_req: NextRequest) {
-      return NextResponse.next();
-    };
+  const isDev = process.env.NODE_ENV !== "production";
+  const cspHeader = [
+    "default-src 'self'",
+    // In production: use nonce for inline scripts
+    // In dev: keep unsafe-inline + unsafe-eval for HMR
+    `script-src 'self'${isDev ? " 'unsafe-inline' 'unsafe-eval'" : ` 'nonce-${nonce}'`} https://va.vercel-scripts.com`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https://api.groq.com https://va.vercel-scripts.com",
+    "img-src 'self' data: blob: https://images.unsplash.com",
+    "worker-src 'self' blob:",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+
+  response.headers.set("Content-Security-Policy", cspHeader);
+  return response;
+}
 
 export const config = {
   matcher: [

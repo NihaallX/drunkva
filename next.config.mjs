@@ -21,33 +21,8 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=31536000; includeSubDomains; preload",
   },
-  // Restrict where scripts, styles, images, and connections can come from.
-  // 'unsafe-inline' is required for Next.js inline styles/scripts in dev; tighten in prod if possible.
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // Next.js requires 'unsafe-inline' and 'unsafe-eval' for dev HMR; prod drops unsafe-eval.
-      // va.vercel-scripts.com is required for Vercel Web Analytics.
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://clerk.com https://*.clerk.accounts.dev https://va.vercel-scripts.com`,
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // data: is required — Next.js self-hosts Google Fonts as data:font/woff2;base64 URIs.
-      "font-src 'self' data: https://fonts.gstatic.com",
-      // Allow Clerk hosted UIs and our own origin for API calls.
-      // api.groq.com is called server-side only but listed here as a safety net.
-      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://*.clerk-telemetry.com https://api.groq.com https://va.vercel-scripts.com",
-      // Allow avatars from Clerk and other common CDNs
-      "img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com https://images.clerk.dev",
-      // Clerk internally creates Web Workers from blob: URLs for its auth machinery.
-      // Without worker-src the browser falls back to script-src which blocks blob:.
-      "worker-src 'self' blob:",
-      "frame-src 'none'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
+  // Note: Content-Security-Policy is now set dynamically in middleware.ts with nonce support
+  // to provide production security hardening (removes unsafe-inline from script-src in prod).
 ];
 
 const nextConfig = {

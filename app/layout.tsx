@@ -1,7 +1,6 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk, Barlow_Condensed } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallPrompt } from "@/components/drunkva/InstallPrompt";
@@ -60,8 +59,6 @@ export const metadata: Metadata = {
   },
 };
 
-const clerkEnabled = process.env.NEXT_PUBLIC_CLERK_ENABLED === "true";
-
 function Providers({ children }: { children: React.ReactNode }) {
   return (
     // ThemeProvider still manages theme context — but we suppress forcedTheme
@@ -82,34 +79,9 @@ export default function RootLayout({
     // Dark mode is set globally via `color-scheme: dark` in :root (globals.css).
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preconnect to external origins hit early in the page lifecycle.
-            Establishing the TCP+TLS handshake before JS runs saves 200-400ms
-            on first auth check and avatar image loads. */}
-        <link rel="preconnect" href="https://clerk.accounts.dev" />
-        <link rel="preconnect" href="https://img.clerk.com" crossOrigin="anonymous" />
+        {/* Preconnect to external origins for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* DNS-prefetch as a fallback for browsers that don't support preconnect */}
-        <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
-        <link rel="dns-prefetch" href="https://img.clerk.com" />
-        {/* Geolocation noop — must live in <head> so it runs before any
-            component mounts. Placed here (not between </head><body>) to
-            avoid the "sync script outside main document" hydration error
-            that Clerk triggers when it injects <ClerkScripts> as a sibling
-            to <html>. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `;(function(){
-  try {
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      const noopError = function(cb){ if (typeof cb === 'function') cb({ code: 1, message: 'Geolocation disabled by app' }); };
-      try { navigator.geolocation.getCurrentPosition = function(success, error){ return noopError(error); }; } catch (e) {}
-      try { navigator.geolocation.watchPosition = function(){ return -1; }; } catch (e) {}
-    }
-  } catch (e) {}
-})();`,
-          }}
-        />
       </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${barlowCondensed.variable} font-sans`}>
         {/*
@@ -125,14 +97,11 @@ export default function RootLayout({
             style={{ paddingTop: "env(safe-area-inset-top)" }}
           >
             <Providers>
-              {clerkEnabled ? children : <AuthGuard>{children}</AuthGuard>}
+              <AuthGuard>{children}</AuthGuard>
               <InstallPrompt />
             </Providers>
           </div>
         </div>
-        {/* async avoids the "sync script outside main document" ordering
-            warning when Next.js renders this layout fragment outside the
-            primary document (e.g. during Clerk's streaming render). */}
         <script
           async
           dangerouslySetInnerHTML={{
@@ -144,9 +113,5 @@ export default function RootLayout({
     </html>
   );
 
-  return clerkEnabled ? (
-    <ClerkProvider>{content}</ClerkProvider>
-  ) : (
-    content
-  );
+  return content;
 }

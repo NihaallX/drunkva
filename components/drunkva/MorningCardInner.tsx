@@ -355,6 +355,10 @@ export function MorningCardInner() {
       useCORS: true,
       allowTaint: true,
       logging: false,
+      windowHeight: captureHeight,
+      windowWidth: captureWidth,
+      // willReadFrequently reduces canvas repaint overhead on low-end devices
+      canvasUsesDefaultCanvasContextSettings: false,
       onclone: (doc: Document, referenceEl?: HTMLElement) => {
         try {
           const clonedRoot = (referenceEl ?? doc.querySelector('[data-export-root="1"]')) as Element | null;
