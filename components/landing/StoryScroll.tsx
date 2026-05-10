@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterEffectSmooth } from "@/components/ui/typewriter-effect";
 import { AnimatedText } from "@/components/ui/animated-underline-text-one";
@@ -38,16 +38,22 @@ const allLines = [
 function TypewriterCycler() {
   const [lineIndex, setLineIndex] = useState(0);
   const [visible, setVisible] = useState(true);
+  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setVisible(false);
-      setTimeout(() => {
+      timeoutRef.current = window.setTimeout(() => {
         setLineIndex((i) => (i + 1) % allLines.length);
         setVisible(true);
       }, 400);
     }, 3500);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   return (
@@ -290,18 +296,7 @@ export default function StoryScroll() {
               />
               <button
                 id="join-waitlist-hero"
-                className="relative w-full sm:w-auto px-8 py-4 text-sm font-bold rounded-xl transition-all duration-200 active:scale-95"
-                style={{
-                  background: "#FC4C02",
-                  color: "#fff",
-                  boxShadow: "0 4px 24px rgba(252,76,2,0.32)",
-                }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLButtonElement).style.background = "#C43D00")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLButtonElement).style.background = "#FC4C02")
-                }
+                className="relative w-full sm:w-auto px-8 py-4 text-sm font-bold rounded-xl transition-all duration-200 active:scale-95 bg-[#FC4C02] hover:bg-[#C43D00] text-white shadow-[0_4px_24px_rgba(252,76,2,0.32)]"
                 onClick={() =>
                   document
                     .getElementById("waitlist-section")
@@ -515,14 +510,7 @@ export default function StoryScroll() {
           <a
             href="#waitlist-section"
             id="join-waitlist-story"
-            className="inline-flex items-center gap-3 px-10 py-5 text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-200 active:scale-95"
-            style={{
-              background: "#FC4C02",
-              color: "#fff",
-              boxShadow: "0 4px 32px rgba(252,76,2,0.38)",
-            }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "#C43D00")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "#FC4C02")}
+            className="inline-flex items-center gap-3 px-10 py-5 text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-200 active:scale-95 bg-[#FC4C02] hover:bg-[#C43D00] text-white shadow-[0_4px_32px_rgba(252,76,2,0.38)]"
           >
             Join the Waitlist →
           </a>
