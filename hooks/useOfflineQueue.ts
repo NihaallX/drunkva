@@ -38,8 +38,8 @@ export function useOfflineQueue() {
       if (registration.sync && typeof registration.sync.register === "function") {
         await registration.sync.register(SYNC_TAG);
       }
-    } catch {
-      // Background Sync unsupported or registration failed.
+    } catch (err) {
+      console.warn("Background Sync unsupported or registration failed", err);
     }
   }, []);
 
@@ -48,8 +48,8 @@ export function useOfflineQueue() {
       const db = await getDB();
       const all: QueuedAction[] = await db.getAll(STORE_NAME);
       setQueueCount(all.length);
-    } catch {
-      // IDB not available
+    } catch (err) {
+      console.warn("IDB not available to refresh count", err);
     }
   }, []);
 
@@ -92,7 +92,8 @@ export function useOfflineQueue() {
             await db.delete(STORE_NAME, action.id);
           }
           // 5xx — leave in queue, retry next time
-        } catch {
+        } catch (error) {
+          console.error("Network error while syncing offline queue:", error);
           // Network error — leave in queue
         }
       }

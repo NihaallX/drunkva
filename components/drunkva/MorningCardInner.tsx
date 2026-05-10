@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import useSWR from "swr";
 import { ImagePlus, RotateCcw } from "lucide-react";
 // html2canvas is dynamically imported in exportAndShare to keep it out of the initial bundle.
 import { cn, formatLiveDuration } from "@/lib/utils";
@@ -179,29 +180,27 @@ export function MorningCardInner() {
     };
   }, [userPhoto]);
 
+  const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const { data } = useSWR(sessionId ? `/api/sessions/${sessionId}` : null, fetcher);
+
   useEffect(() => {
-    if (!sessionId) return;
-    fetch(`/api/sessions/${sessionId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        // Calculate duration if not already set
-        let sessionData = data.session;
-        if (!sessionData.total_duration_seconds && sessionData.start_time && sessionData.end_time) {
-          const startMs = new Date(sessionData.start_time).getTime();
-          const endMs = new Date(sessionData.end_time).getTime();
-          sessionData.total_duration_seconds = Math.floor((endMs - startMs) / 1000);
-        }
-        setSession(sessionData);
-        setDrinks(data.drinks ?? []);
-        setWitnesses(data.witnesses ?? []);
-        setVenueName(sessionData.venue_name ?? "");
-        const beerDrinks = (data.drinks ?? []).filter((d: any) => d.type === "beer" && d.duration_seconds != null);
-        if (beerDrinks.length > 0) {
-          const hasPR = beerDrinks.some((d: any) => d.is_pr === true);
-          setFastestBeerIsPR(hasPR);
-        }
-      });
-  }, [sessionId]);
+    if (!data) return;
+    let sessionData = data.session;
+    if (sessionData && !sessionData.total_duration_seconds && sessionData.start_time && sessionData.end_time) {
+      const startMs = new Date(sessionData.start_time).getTime();
+      const endMs = new Date(sessionData.end_time).getTime();
+      sessionData.total_duration_seconds = Math.floor((endMs - startMs) / 1000);
+    }
+    setSession(sessionData);
+    setDrinks(data.drinks ?? []);
+    setWitnesses(data.witnesses ?? []);
+    setVenueName(sessionData?.venue_name ?? "");
+    const beerDrinks = (data.drinks ?? []).filter((d: any) => d.type === "beer" && d.duration_seconds != null);
+    if (beerDrinks.length > 0) {
+      const hasPR = beerDrinks.some((d: any) => d.is_pr === true);
+      setFastestBeerIsPR(hasPR);
+    }
+  }, [data]);
 
   const generateTitle = async () => {
     if (!session) return;
