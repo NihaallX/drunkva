@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { clerkEnabled } from "@/lib/mock-user";
 import { getSimpleUser, isSimpleLoggedIn } from "@/lib/simple-auth";
 
-const PUBLIC_ROUTES = new Set(["/simple-auth", "/privacy", "/terms"]);
+const PUBLIC_ROUTES = new Set(["/simple-auth", "/privacy", "/terms", "/landing"]);
 
 declare global {
   interface Window {
