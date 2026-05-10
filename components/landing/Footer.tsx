@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Twitter, Instagram } from "lucide-react";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 
@@ -18,10 +19,28 @@ export default function Footer() {
           <DrunkvaLogo className="h-6" />
         </div>
 
-        {/* Copyright */}
-        <p className="text-sm order-last sm:order-none" style={{ color: "#4A4A4A" }}>
-          © 2025 Drunkva. Drink responsibly.
-        </p>
+        {/* Copyright + legal links */}
+        <div className="order-last sm:order-none flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-sm" style={{ color: "#4A4A4A" }}>
+          <p>© 2025 Drunkva. Drink responsibly.</p>
+          <span className="hidden sm:inline" aria-hidden>
+            •
+          </span>
+          <Link
+            href="/terms"
+            className="transition-colors duration-200 hover:text-[#FC4C02]"
+          >
+            Terms
+          </Link>
+          <span className="hidden sm:inline" aria-hidden>
+            •
+          </span>
+          <Link
+            href="/privacy"
+            className="transition-colors duration-200 hover:text-[#FC4C02]"
+          >
+            Privacy
+          </Link>
+        </div>
 
         {/* Social icons */}
         <div className="flex items-center gap-5">
