@@ -124,18 +124,17 @@
   }
 }
 
-/* Landing-specific body copy utility for consistent typography */
+/* Landing-specific body copy utility for consistent typography (Tailwind-applied) */
 @layer components {
   .landing-body {
     font-family: var(--font-sans);
     color: var(--color-muted-foreground);
-    font-size: 1rem;
-    line-height: 1.6;
     max-width: 65ch;
+    @apply text-base leading-relaxed;
   }
-  @media (min-width: 640px) {
+  @screen sm {
     .landing-body {
-      font-size: 1.125rem;
+      @apply text-lg;
     }
   }
 }
