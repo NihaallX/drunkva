@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { getSimpleUser, setSimpleUser } from "@/lib/simple-auth";
 
@@ -12,6 +13,7 @@ export default function SimpleAuthPage() {
   const [email, setEmail] = useState("");
   const [realName, setRealName] = useState("");
   const [alias, setAlias] = useState("");
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +40,10 @@ export default function SimpleAuthPage() {
       setError("Please enter your name.");
       return;
     }
+    if (!acceptedLegal) {
+      setError("Please accept Terms and Privacy to continue.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -48,6 +54,7 @@ export default function SimpleAuthPage() {
           email: normalizedEmail,
           real_name: normalizedName,
           alias: normalizedAlias,
+          accepted_legal: true,
         }),
       });
 
@@ -115,6 +122,27 @@ export default function SimpleAuthPage() {
               autoComplete="nickname"
               className="w-full rounded-xl border border-[#262626] bg-[#141414] px-3.5 py-[14px] text-sm text-white outline-none focus:border-[#f97316]/60"
             />
+
+            <label className="flex items-start gap-3 rounded-xl border border-[#262626] bg-[#141414] px-3.5 py-3 text-left">
+              <input
+                id="simple-auth-legal-consent"
+                type="checkbox"
+                checked={acceptedLegal}
+                onChange={(e) => setAcceptedLegal(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-[#f97316]"
+              />
+              <span className="text-xs leading-relaxed text-muted-foreground">
+                I confirm I am of legal drinking age in my jurisdiction, and I agree to the{" "}
+                <Link href="/terms" className="text-[#f97316] hover:underline font-medium">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-[#f97316] hover:underline font-medium">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
 
             {error && <p className="text-[13px] text-[#ef4444]">{error}</p>}
 

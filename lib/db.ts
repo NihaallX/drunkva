@@ -15,6 +15,9 @@ export interface DbUser {
   alias: string | null;
   avatar_url: string | null;
   is_onboarded: boolean;
+  terms_accepted_at: string | null;
+  privacy_accepted_at: string | null;
+  legal_consent_version: string | null;
   created_at: string;
 }
 

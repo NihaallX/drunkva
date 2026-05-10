@@ -207,4 +207,13 @@ await sql`
 `;
 console.log('Added requested indexes');
 
+// 13. Add legal consent columns to users
+await sql`
+  ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS privacy_accepted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS legal_consent_version TEXT
+`;
+console.log('Added legal consent columns to users');
+
 console.log('All migrations complete');
