@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterEffectSmooth } from "@/components/ui/typewriter-effect";
 import { AnimatedText } from "@/components/ui/animated-underline-text-one";
 import FlowArt, { FlowSection } from "@/components/ui/story-scroll";
+import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 
 // ─── Typewriter Lines ────────────────────────────────────────────────────────
 const allLines = [
@@ -211,17 +212,11 @@ export default function StoryScroll() {
           }}
         />
 
-        {/* ── Top bar: DRUNKVA wordmark + eyebrow ── */}
+        {/* ── Top bar: wordmark + eyebrow ── */}
         <div className="relative flex items-center justify-between" style={{ zIndex: 2 }}>
           {/* Wordmark */}
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">🍺</span>
-            <span
-              className="text-2xl sm:text-3xl font-black tracking-tight"
-              style={{ color: "#FC4C02", fontFamily: "var(--font-heading)" }}
-            >
-              DRUNKVA
-            </span>
+            <DrunkvaLogo className="h-8" />
           </div>
 
           {/* Eyebrow badge */}

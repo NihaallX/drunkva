@@ -1,6 +1,7 @@
 "use client";
 
 import { Twitter, Instagram } from "lucide-react";
+import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 
 export default function Footer() {
   return (
@@ -14,13 +15,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <span className="text-lg">🍺</span>
-          <span
-            className="text-base font-black tracking-tight"
-            style={{ color: "#FC4C02", fontFamily: "var(--font-heading)" }}
-          >
-            Drunkva
-          </span>
+          <DrunkvaLogo className="h-6" />
         </div>
 
         {/* Copyright */}
