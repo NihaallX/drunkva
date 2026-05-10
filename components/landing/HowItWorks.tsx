@@ -121,10 +121,7 @@ export default function HowItWorks() {
               >
                 {step.title}
               </h3>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <p className="text-base sm:text-lg leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                 {step.desc}
               </p>
 
