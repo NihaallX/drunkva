@@ -123,3 +123,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Landing-specific body copy utility for consistent typography */
+@layer components {
+  .landing-body {
+    font-family: var(--font-sans);
+    color: var(--color-muted-foreground);
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: 65ch;
+  }
+  @media (min-width: 640px) {
+    .landing-body {
+      font-size: 1.125rem;
+    }
+  }
+}

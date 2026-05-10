@@ -351,7 +351,7 @@ export default function StoryScroll() {
           </h2>
         </div>
         <Divider color="rgba(255,255,255,0.2)" />
-        <p className="max-w-[65ch] text-base sm:text-lg font-normal leading-relaxed text-[rgba(255,255,255,0.9)]">
+        <p className="landing-body max-w-[65ch] text-base sm:text-lg font-normal leading-relaxed text-[rgba(255,255,255,0.9)]">
           Open Drunkva, give your session a name, and gather your crew. One tap and the night begins.
         </p>
       </FlowSection>
@@ -377,7 +377,7 @@ export default function StoryScroll() {
           </h2>
         </div>
         <Divider />
-        <p className="max-w-[65ch] text-base sm:text-lg font-normal leading-relaxed text-[rgba(255,255,255,0.9)]">
+        <p className="landing-body max-w-[65ch] text-base sm:text-lg font-normal leading-relaxed text-[rgba(255,255,255,0.9)]">
           Add drinks in real time. Friends can verify — or expose — every round. Your confidence curve builds live, drink by drink.
         </p>
         <Divider />
@@ -391,7 +391,7 @@ export default function StoryScroll() {
               <p className="mb-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: "#FC4C02" }}>
                 {item.label}
               </p>
-              <p className="text-sm sm:text-base leading-relaxed text-[rgba(255,255,255,0.7)]">
+              <p className="landing-body text-sm sm:text-base leading-relaxed text-[rgba(255,255,255,0.7)]">
                 {item.desc}
               </p>
             </div>

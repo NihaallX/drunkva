@@ -46,7 +46,7 @@ export default function Waitlist() {
             <span style={{ color: "#FC4C02" }}>Be legendary.</span>
           </h2>
 
-          <p className="text-base sm:text-lg mb-12 max-w-[65ch] mx-auto leading-relaxed" style={{ color: "#7A7A7A" }}>
+          <p className="landing-body text-base sm:text-lg mb-12 max-w-[65ch] mx-auto leading-relaxed" style={{ color: "#7A7A7A" }}>
             We're letting in the first wave of degens. Get in before your friends do.
           </p>
 
