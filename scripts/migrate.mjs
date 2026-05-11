@@ -216,4 +216,19 @@ await sql`
 `;
 console.log('Added legal consent columns to users');
 
+// 14. Add waitlist table for landing page email capture
+await sql`
+  CREATE TABLE IF NOT EXISTS waitlist (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    name TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_waitlist_email
+  ON waitlist (email)
+`;
+console.log('Created waitlist table and index');
+
 console.log('All migrations complete');
