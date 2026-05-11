@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import sql from "@/lib/db";
+import { getDecayedPeakConfidence } from "@/lib/confidence";
 
 // GET /api/sessions — list user's sessions
 export async function GET(req: Request) {
@@ -23,7 +24,20 @@ export async function GET(req: Request) {
       LIMIT ${limit}
     `;
 
-    return NextResponse.json({ sessions });
+    const sessionsWithDecayedPeak = sessions.map((session) => {
+      const decayedPeak = getDecayedPeakConfidence(
+        Number(session.peak_confidence_pct ?? 10),
+        session.peak_confidence_updated_at ?? session.end_time ?? session.start_time ?? session.created_at
+      );
+
+      return {
+        ...session,
+        peak_confidence_pct: decayedPeak.confidence,
+        peak_stage: decayedPeak.stage,
+      };
+    });
+
+    return NextResponse.json({ sessions: sessionsWithDecayedPeak });
   } catch (err) {
     if (err instanceof Response) return err;
     console.error("GET /api/sessions failed", err);

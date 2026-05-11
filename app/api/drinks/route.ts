@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import sql from "@/lib/db";
-import { calculateConfidence, getStage } from "@/lib/confidence";
+import { calculateConfidence } from "@/lib/confidence";
+import type { DrinkLog } from "@/lib/confidence";
 import { MAX_SPEED_SECONDS, MIN_REALISTIC_SECONDS, normalizeDuration } from "@/lib/drink-speed";
 import { drinksLimiter } from "@/lib/rate-limit";
 
@@ -119,12 +120,19 @@ export async function POST(req: Request) {
     const allDrinks = await sql`
       SELECT type, logged_at FROM drinks WHERE session_id = ${session_id} ORDER BY logged_at ASC
     `;
-    const conf = calculateConfidence(allDrinks as any);
+    const conf = calculateConfidence(allDrinks as DrinkLog[]);
 
     await sql`
       UPDATE sessions SET
         peak_confidence_pct = GREATEST(peak_confidence_pct, ${conf.peak}),
-        peak_stage = ${getStage(conf.peak)}
+        peak_stage = CASE
+          WHEN ${conf.peak} > peak_confidence_pct THEN ${conf.peakStage}
+          ELSE peak_stage
+        END,
+        peak_confidence_updated_at = CASE
+          WHEN ${conf.peak} > peak_confidence_pct THEN ${drinkIso}
+          ELSE COALESCE(peak_confidence_updated_at, ${drinkIso})
+        END
       WHERE id = ${session_id}
     `;
 

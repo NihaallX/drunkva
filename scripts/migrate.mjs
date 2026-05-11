@@ -231,4 +231,15 @@ await sql`
 `;
 console.log('Created waitlist table and index');
 
+// 15. Add confidence freshness timestamp to sessions
+await sql`
+  ALTER TABLE sessions
+  ADD COLUMN IF NOT EXISTS peak_confidence_updated_at TIMESTAMPTZ
+`;
+await sql`
+  UPDATE sessions
+  SET peak_confidence_updated_at = COALESCE(peak_confidence_updated_at, end_time, start_time, created_at)
+`;
+console.log('Added and backfilled peak_confidence_updated_at');
+
 console.log('All migrations complete');

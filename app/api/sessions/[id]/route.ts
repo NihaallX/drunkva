@@ -6,6 +6,7 @@ import {
   calculateTotalDurationSeconds,
   type SessionDrinkTime,
 } from "@/lib/session-duration";
+import { getDecayedPeakConfidence } from "@/lib/confidence";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -77,9 +78,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       SELECT COUNT(*) as count FROM cheers WHERE session_id = ${id}
     `;
 
+    const decayedPeak = getDecayedPeakConfidence(
+      Number(sessionRow.peak_confidence_pct ?? 10),
+      sessionRow.peak_confidence_updated_at ??
+        sessionRow.end_time ??
+        sessionRow.start_time ??
+        sessionRow.created_at
+    );
+
     return NextResponse.json({
       session: {
         ...sessionRow,
+        peak_confidence_pct: decayedPeak.confidence,
+        peak_stage: decayedPeak.stage,
         real_name: user?.real_name ?? null,
         alias: user?.alias ?? null,
         avatar_url: user?.avatar_url ?? null,

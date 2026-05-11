@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import sql from "@/lib/db";
+import { getDecayedPeakConfidence } from "@/lib/confidence";
 
 export async function GET(req: Request) {
   try {
@@ -40,7 +41,20 @@ export async function GET(req: Request) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    return NextResponse.json({ feed, has_more: feed.length === limit });
+    const feedWithDecayedPeak = feed.map((session) => {
+      const decayedPeak = getDecayedPeakConfidence(
+        Number(session.peak_confidence_pct ?? 10),
+        session.peak_confidence_updated_at ?? session.end_time ?? session.start_time ?? session.created_at
+      );
+
+      return {
+        ...session,
+        peak_confidence_pct: decayedPeak.confidence,
+        peak_stage: decayedPeak.stage,
+      };
+    });
+
+    return NextResponse.json({ feed: feedWithDecayedPeak, has_more: feed.length === limit });
   } catch (err) {
     if (err instanceof Response) return err;
     console.error("GET /api/feed failed", err);
