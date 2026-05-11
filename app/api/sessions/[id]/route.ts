@@ -172,17 +172,18 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   try {
     const user = await requireAuth();
+
+    // Ownership check BEFORE opening a transaction so we can return 404 early
+    const [existing] = await sql`
+      SELECT id FROM sessions WHERE id = ${id} AND user_id = ${user.id}
+    `;
+    if (!existing) {
+      return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 });
+    }
+
     await sql`BEGIN`;
 
     try {
-      const [existing] = await sql`
-        SELECT id FROM sessions WHERE id = ${id} AND user_id = ${user.id}
-      `;
-      if (!existing) {
-        await sql`ROLLBACK`;
-        return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 });
-      }
-
       await sql`DELETE FROM drinks WHERE session_id = ${id}`;
       await sql`DELETE FROM session_witnesses WHERE session_id = ${id}`;
       await sql`DELETE FROM cheers WHERE session_id = ${id}`;
