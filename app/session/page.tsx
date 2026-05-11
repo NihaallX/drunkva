@@ -285,6 +285,7 @@ export default function SessionPage() {
     // session is still closed on the client and the morning-card still loads.
     const sid = session.id;
     localStorage.removeItem("dv-active-session");
+    localStorage.setItem(`dv-allow-morning-card-${sid}`, "1");
     router.push(`/morning-card?sessionId=${sid}`);
     fetch(`/api/sessions/${sid}`, {
       method: "PATCH",

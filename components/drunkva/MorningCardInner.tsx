@@ -57,6 +57,9 @@ const DEFAULT_FULL_INFO_STATS: FullInfoSelectedStats = {
   confidenceGraph: true,
 };
 
+const ACTIVE_SESSION_STORAGE_KEY = "dv-active-session";
+const allowMorningCardKey = (sessionId: string) => `dv-allow-morning-card-${sessionId}`;
+
 // Step indicator
 function StepBar({ step }: { step: number }) {
   return (
@@ -101,9 +104,12 @@ export function MorningCardInner() {
 
   const positionRef = useRef({ x: 0.5, y: 0.25 });
   const scaleRef = useRef(1.0);
+  const shareCompleteTimerRef = useRef<number | null>(null);
+  const endScreenMountTimerRef = useRef<number | null>(null);
+  const endScreenUnderlineTimerRef = useRef<number | null>(null);
 
   // State
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [session, setSession] = useState<any>(null);
   const [drinks, setDrinks] = useState<any[]>([]);
   const [witnesses, setWitnesses] = useState<any[]>([]);
@@ -121,6 +127,10 @@ export function MorningCardInner() {
   const [witnessSheetOpen, setWitnessSheetOpen] = useState(false);
   const [witnessShared, setWitnessShared] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [shareCompleteAction, setShareCompleteAction] = useState<"saved" | "shared" | null>(null);
+  const [shareExitVisible, setShareExitVisible] = useState(false);
+  const [endScreenMounted, setEndScreenMounted] = useState(false);
+  const [endScreenUnderlineVisible, setEndScreenUnderlineVisible] = useState(false);
 
   const showToast = (message: string) => {
     setToast({ visible: true, message });
@@ -181,11 +191,21 @@ export function MorningCardInner() {
 
   useEffect(() => {
     if (!sessionId) return;
+    const allowMorningCard = window.localStorage.getItem(allowMorningCardKey(sessionId)) === "1";
     fetch(`/api/sessions/${sessionId}`)
       .then((r) => r.json())
       .then((data) => {
         // Calculate duration if not already set
         let sessionData = data.session;
+        if (sessionData?.end_time && !allowMorningCard) {
+          window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+          showToast("That night's already been logged 🌅");
+          router.replace("/session");
+          return;
+        }
+        if (allowMorningCard) {
+          window.localStorage.removeItem(allowMorningCardKey(sessionId));
+        }
         if (!sessionData.total_duration_seconds && sessionData.start_time && sessionData.end_time) {
           const startMs = new Date(sessionData.start_time).getTime();
           const endMs = new Date(sessionData.end_time).getTime();
@@ -201,7 +221,52 @@ export function MorningCardInner() {
           setFastestBeerIsPR(hasPR);
         }
       });
-  }, [sessionId]);
+  }, [router, sessionId]);
+
+  useEffect(() => {
+    if (step !== 3) {
+      setEndScreenMounted(false);
+      setEndScreenUnderlineVisible(false);
+      return;
+    }
+
+    window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+    setEndScreenMounted(false);
+    setEndScreenUnderlineVisible(false);
+
+    endScreenMountTimerRef.current = window.setTimeout(() => {
+      setEndScreenMounted(true);
+    }, 20);
+
+    endScreenUnderlineTimerRef.current = window.setTimeout(() => {
+      setEndScreenUnderlineVisible(true);
+    }, 300);
+
+    return () => {
+      if (endScreenMountTimerRef.current != null) {
+        window.clearTimeout(endScreenMountTimerRef.current);
+        endScreenMountTimerRef.current = null;
+      }
+      if (endScreenUnderlineTimerRef.current != null) {
+        window.clearTimeout(endScreenUnderlineTimerRef.current);
+        endScreenUnderlineTimerRef.current = null;
+      }
+    };
+  }, [step]);
+
+  useEffect(() => {
+    return () => {
+      if (shareCompleteTimerRef.current != null) {
+        window.clearTimeout(shareCompleteTimerRef.current);
+      }
+      if (endScreenMountTimerRef.current != null) {
+        window.clearTimeout(endScreenMountTimerRef.current);
+      }
+      if (endScreenUnderlineTimerRef.current != null) {
+        window.clearTimeout(endScreenUnderlineTimerRef.current);
+      }
+    };
+  }, []);
 
   const generateTitle = async () => {
     if (!session) return;
@@ -473,7 +538,7 @@ export function MorningCardInner() {
 
       if (typeof navigator.share === "function" && canShareFiles) {
         await navigator.share({ files: [file], title: "My Drunkva session" });
-        if (!witnessShared) setWitnessSheetOpen(true);
+        handleShareComplete("shared");
       } else {
         const url = URL.createObjectURL(blob);
         try {
@@ -482,7 +547,7 @@ export function MorningCardInner() {
         } finally {
           URL.revokeObjectURL(url);
         }
-        if (!witnessShared) setWitnessSheetOpen(true);
+        handleShareComplete("saved");
       }
     } catch (err: unknown) {
       setExporting(false);
@@ -499,17 +564,16 @@ export function MorningCardInner() {
     setExporting(true);
     try {
       const blob = await buildExportBlob();
-      // Unblur the app before triggering download & opening witness sheet
+      // Unblur the app before triggering download.
       setExporting(false);
       const url = URL.createObjectURL(blob);
       try {
         const a = document.createElement("a");
         a.href = url; a.download = "drunkva-session.png"; a.click();
-        showToast("Saved to Downloads ✓");
       } finally {
         URL.revokeObjectURL(url);
       }
-      if (!witnessShared) setWitnessSheetOpen(true);
+      handleShareComplete("saved");
     } catch (err) {
       setExporting(false);
       showToast("Export failed — please try again");
@@ -527,6 +591,30 @@ export function MorningCardInner() {
     }
 
     setShareStage("export");
+  };
+
+  const handleShareComplete = (action: "saved" | "shared") => {
+    if (step === 3) return;
+
+    setShareCompleteAction(action);
+    setShareExitVisible(true);
+
+    if (shareCompleteTimerRef.current != null) {
+      window.clearTimeout(shareCompleteTimerRef.current);
+    }
+
+    shareCompleteTimerRef.current = window.setTimeout(() => {
+      setStep(3);
+      setShareExitVisible(false);
+    }, 200);
+  };
+
+  const handleDone = () => {
+    router.replace("/session");
+  };
+
+  const handleViewSession = () => {
+    router.push("/feed");
   };
 
   const handleNavBack = () => {
@@ -552,6 +640,23 @@ export function MorningCardInner() {
     setStep(1);
   };
 
+  const totalDrinks = drinks.length;
+  const peakConfidencePct = typeof session?.peak_confidence_pct === "number" ? session.peak_confidence_pct : null;
+  const durationSeconds = typeof session?.total_duration_seconds === "number" ? session.total_duration_seconds : null;
+
+  const endScreenPills = [
+    totalDrinks > 0 ? `${totalDrinks} drinks` : null,
+    peakConfidencePct && peakConfidencePct > 0
+      ? (
+        <span key="peak">
+          <span className="text-[#f97316]">{peakConfidencePct}%</span>
+          <span className="text-[#666]"> peak</span>
+        </span>
+      )
+      : null,
+    durationSeconds && durationSeconds > 0 ? formatLiveDuration(durationSeconds) : null,
+  ].filter(Boolean);
+
   const bgStyle: React.CSSProperties = userPhoto
     ? { backgroundImage: `url(${userPhoto})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { background: BG_PRESETS.find((b) => b.id === selectedBg)?.style ?? BG_PRESETS[0].style };
@@ -569,25 +674,25 @@ export function MorningCardInner() {
     // This is critical: fixed+backdrop-blur sheets must not be children of a
     // stacking-context parent (transform, will-change, etc.) or they clip.
     <>
-    <div className="min-h-dvh bg-background pb-8">
       <Toast message={toast.message} visible={toast.visible} />
+      {step !== 3 && (
+        <div className="min-h-dvh bg-background pb-8">
+          {/* Nav */}
+          <div className="dv-nav flex items-center gap-3 px-4 py-3">
+            <Button variant="ghost" size="icon-sm" onClick={handleNavBack} className="text-muted-foreground">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Button>
+            <DrunkvaLogo />
+          </div>
 
-      {/* Nav */}
-      <div className="dv-nav flex items-center gap-3 px-4 py-3">
-        <Button variant="ghost" size="icon-sm" onClick={handleNavBack} className="text-muted-foreground">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Button>
-        <DrunkvaLogo />
-      </div>
-
-      <div className="px-4 pt-4">
-        <StepBar step={step} />
+          <div className="px-4 pt-4">
+            <StepBar step={step} />
 
         {/* STEP 1: Unified (Refine + Title) */}
-        {step === 1 && (
-          <div className="flex flex-col gap-5">
+            {step === 1 && (
+              <div className="flex flex-col gap-5">
             {/* Page title */}
             <div>
               <h1 className="text-xl font-semibold text-foreground">Wrap up the night</h1>
@@ -696,19 +801,19 @@ export function MorningCardInner() {
               Choose template →
             </Button>
           </div>
-        )}
-        {step === 2 && shareStage === "template" && (
-          <div className="flex flex-col gap-4">
+            )}
+            {step === 2 && shareStage === "template" && (
+              <div className={cn("flex flex-col gap-4 transition-opacity duration-200", shareExitVisible && "opacity-0 pointer-events-none")}>
             <div>
               <h2 className="text-xl font-semibold text-foreground">Choose a template</h2>
               <p className="mt-1 text-[13px] text-muted-foreground">Pick your style before exporting</p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleTemplateSelect("strava")}
-              className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
-            >
+                <button
+                  type="button"
+                  onClick={() => handleTemplateSelect("strava")}
+                  className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
+                >
               <div className="min-w-0">
                 <div className="text-[16px] font-semibold text-white truncate">Strava</div>
                 <div className="mt-1 text-[12px] text-[#555] line-clamp-2">The classic draggable share look.</div>
@@ -724,13 +829,13 @@ export function MorningCardInner() {
                   <div className="h-full w-[72%] rounded-full bg-[#f97316]" />
                 </div>
               </div>
-            </button>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleTemplateSelect("full-info")}
-              className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
-            >
+                <button
+                  type="button"
+                  onClick={() => handleTemplateSelect("full-info")}
+                  className="dv-surface flex w-full items-center justify-between gap-3 rounded-[18px] p-4 text-left transition-colors hover:bg-card/80"
+                >
               <div className="min-w-0">
                 <div className="text-[16px] font-semibold text-white truncate">Full Info</div>
                 <div className="mt-1 text-[12px] text-[#555] line-clamp-2">Every stat. For the obsessives.</div>
@@ -746,22 +851,24 @@ export function MorningCardInner() {
                   <div className="h-full w-[74%] rounded-full bg-[#f97316]" />
                 </div>
               </div>
-            </button>
-          </div>
-        )}
+                </button>
+              </div>
+            )}
 
-        {step === 2 && shareStage === "picker" && selectedTemplate === "full-info" && (
-          <FullInfoStatPicker
-            selectedStats={selectedStats}
-            onChange={setSelectedStats}
-            onBack={() => setShareStage("template")}
-            onGenerate={() => setShareStage("export")}
-          />
-        )}
+            {step === 2 && shareStage === "picker" && selectedTemplate === "full-info" && (
+              <div className={cn("transition-opacity duration-200", shareExitVisible && "opacity-0 pointer-events-none")}>
+                <FullInfoStatPicker
+                  selectedStats={selectedStats}
+                  onChange={setSelectedStats}
+                  onBack={() => setShareStage("template")}
+                  onGenerate={() => setShareStage("export")}
+                />
+              </div>
+            )}
 
-        {step === 2 && shareStage === "export" && (
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-2">
+            {step === 2 && shareStage === "export" && (
+              <div className={cn("flex flex-col gap-4 transition-opacity duration-200", shareExitVisible && "opacity-0 pointer-events-none")}>
+              <div className="flex gap-2">
               {BG_PRESETS.map((bg) => (
                 <button
                   key={bg.id}
@@ -833,11 +940,97 @@ export function MorningCardInner() {
               >
                 Download
               </Button>
-            </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="flex min-h-dvh items-center justify-center bg-[#0a0a0a] px-4">
+          <div
+            className={cn(
+              "end-screen w-full max-w-[390px] flex flex-col items-center text-center",
+              endScreenMounted && "mounted"
+            )}
+          >
+            <div className="flex flex-col items-center">
+              <span
+                className={cn(
+                  "block text-[64px] leading-none transition-transform duration-300 ease-out",
+                  endScreenMounted ? "scale-100" : "scale-[0.8]"
+                )}
+                aria-hidden="true"
+              >
+                🌅
+              </span>
+              <div
+                className={cn(
+                  "mt-3 h-[1.5px] w-0 rounded-full bg-[#f97316] transition-[width] duration-[600ms] ease-out delay-300",
+                  endScreenUnderlineVisible && "w-12"
+                )}
+              />
+            </div>
+
+            <div className="mt-8 flex flex-col gap-1.5">
+              <h2 className="text-[26px] font-extrabold tracking-[-0.03em] text-white">Night logged.</h2>
+              <p className="text-[14px] font-normal text-[#555]">Go drink some water.</p>
+            </div>
+
+            {endScreenPills.length > 0 && (
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {endScreenPills.map((pill, index) => (
+                  <div
+                    key={`${typeof pill === "string" ? pill : "peak"}-${index}`}
+                    className="rounded-full border border-[#1e1e1e] bg-[#111] px-[14px] py-[6px] text-[12px] text-[#666]"
+                  >
+                    {pill}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-3 text-[12px] text-[#333]">
+              {shareCompleteAction === "shared" ? "Shared ✓" : "Saved to your camera roll"}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDone}
+              className="simple-auth-btn mt-7 h-[56px] w-full rounded-xl bg-[#f97316] px-4 text-[16px] font-bold text-white transition-colors hover:bg-[#ea6a10] active:scale-[0.98]"
+            >
+              <span className="flex items-center justify-center">
+                Back to the bar
+                <span className="btn-arrow" aria-hidden="true">
+                  →
+                </span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleViewSession}
+              className="mt-3 text-[13px] text-[#444] transition-colors hover:text-[#666] active:text-[#666]"
+            >
+              View session on feed →
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .end-screen {
+          opacity: 0;
+          transform: translateY(12px);
+          transition: opacity 300ms ease, transform 300ms ease;
+        }
+
+        .end-screen.mounted {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      `}</style>
 
     {/* WitnessSheet rendered OUTSIDE the page div so its fixed backdrop is
         never clipped by the page's stacking context. This is the fix for the

@@ -8,6 +8,8 @@ import { AuthGuard } from "@/components/drunkva/AuthGuard";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 // Body font — display: swap prevents invisible text while font loads
 const inter = Inter({
   subsets: ["latin"],
@@ -108,7 +110,7 @@ export default function RootLayout({
             __html: `if ('serviceWorker' in navigator) { window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); }`,
           }}
         />
-        <Analytics />
+        {isProduction && <Analytics />}
       </body>
     </html>
   );
