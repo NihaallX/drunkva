@@ -17,6 +17,12 @@ export const STAGES = [
   { name: "Credits", min: 93, max: 99 },
 ];
 
+const MIN_CONFIDENCE = 10;
+const MAX_CONFIDENCE = 99;
+const DECAY_GRACE_MINUTES = 90;
+const DECAY_WINDOW_MINUTES = 30;
+const DECAY_PER_WINDOW = 5;
+
 export function getStage(pct: number): string {
   for (const s of STAGES) {
     if (pct >= s.min && pct <= s.max) return s.name;
@@ -69,14 +75,14 @@ export function calculateConfidence(drinks: DrinkLog[]): ConfidenceResult {
     const currentTime = new Date(sorted[i].logged_at).getTime();
     const gapMinutes = (nextTime - currentTime) / 60000;
 
-    if (gapMinutes > 90) {
-      const decayPeriods = Math.floor((gapMinutes - 90) / 30);
-      const decay = decayPeriods * 5;
-      confidence = Math.max(10, confidence - decay);
+    if (gapMinutes > DECAY_GRACE_MINUTES) {
+      const decayPeriods = Math.floor((gapMinutes - DECAY_GRACE_MINUTES) / DECAY_WINDOW_MINUTES);
+      const decay = decayPeriods * DECAY_PER_WINDOW;
+      confidence = Math.max(MIN_CONFIDENCE, confidence - decay);
     }
   }
 
-  confidence = Math.max(10, Math.min(99, confidence));
+  confidence = Math.max(MIN_CONFIDENCE, Math.min(MAX_CONFIDENCE, confidence));
 
   return {
     current: Math.round(confidence),
@@ -107,7 +113,7 @@ export function reconstructCurve(
   );
 
   const points: CurvePoint[] = [{ time: 0, confidence: 10 }];
-  let confidence = 10;
+  let confidence = MIN_CONFIDENCE;
 
   for (let i = 0; i < sorted.length; i++) {
     const drinkTime = new Date(sorted[i].logged_at).getTime();
@@ -117,13 +123,13 @@ export function reconstructCurve(
     if (i > 0) {
       const prevTime = new Date(sorted[i - 1].logged_at).getTime();
       const gapMinutes = (drinkTime - prevTime) / 60000;
-      if (gapMinutes > 90) {
-        const decayPeriods = Math.floor((gapMinutes - 90) / 30);
-        confidence = Math.max(10, confidence - decayPeriods * 5);
+      if (gapMinutes > DECAY_GRACE_MINUTES) {
+        const decayPeriods = Math.floor((gapMinutes - DECAY_GRACE_MINUTES) / DECAY_WINDOW_MINUTES);
+        confidence = Math.max(MIN_CONFIDENCE, confidence - decayPeriods * DECAY_PER_WINDOW);
       }
     }
 
-    confidence = Math.min(99, confidence + weight);
+    confidence = Math.min(MAX_CONFIDENCE, confidence + weight);
 
     points.push({
       time: drinkTime - startMs,
@@ -134,6 +140,32 @@ export function reconstructCurve(
   }
 
   return points;
+}
+
+export function getDecayedPeakConfidence(
+  storedPeakPct: number,
+  lastUpdatedAt: string | Date | null | undefined,
+  nowMs = Date.now()
+): { confidence: number; stage: string } {
+  const boundedPeak = Math.max(MIN_CONFIDENCE, Math.min(MAX_CONFIDENCE, Math.round(storedPeakPct)));
+  if (!lastUpdatedAt) {
+    return { confidence: boundedPeak, stage: getStage(boundedPeak) };
+  }
+
+  const updatedMs = new Date(lastUpdatedAt).getTime();
+  if (!Number.isFinite(updatedMs) || nowMs <= updatedMs) {
+    return { confidence: boundedPeak, stage: getStage(boundedPeak) };
+  }
+
+  const elapsedMinutes = (nowMs - updatedMs) / 60000;
+  if (elapsedMinutes <= DECAY_GRACE_MINUTES) {
+    return { confidence: boundedPeak, stage: getStage(boundedPeak) };
+  }
+
+  const decayPeriods = Math.floor((elapsedMinutes - DECAY_GRACE_MINUTES) / DECAY_WINDOW_MINUTES);
+  const decayed = Math.max(MIN_CONFIDENCE, boundedPeak - decayPeriods * DECAY_PER_WINDOW);
+
+  return { confidence: decayed, stage: getStage(decayed) };
 }
 
 // ─── Format helpers ───────────────────────────────────────────────────────────

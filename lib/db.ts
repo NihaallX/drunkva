@@ -33,6 +33,7 @@ export interface DbSession {
   active_duration_seconds: number | null;
   session_title: string | null;
   peak_confidence_pct: number;
+  peak_confidence_updated_at: string | null;
   peak_stage: string;
   washroom_count: number;
   burp_count: number;
