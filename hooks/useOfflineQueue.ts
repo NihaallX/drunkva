@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { useEffect, useRef, useCallback, useState } from "react";
+import { logError } from "@/lib/logger";
 
 const DB_NAME = "drunkva-offline";
 const STORE_NAME = "action-queue";
@@ -39,7 +40,7 @@ export function useOfflineQueue() {
         await registration.sync.register(SYNC_TAG);
       }
     } catch {
-      // Background Sync unsupported or registration failed.
+      logError({ context: 'useOfflineQueue', message: 'Failed to register Background Sync', data: 'Background Sync unsupported or registration failed' });
     }
   }, []);
 
@@ -49,20 +50,24 @@ export function useOfflineQueue() {
       const all: QueuedAction[] = await db.getAll(STORE_NAME);
       setQueueCount(all.length);
     } catch {
-      // IDB not available
+      logError({ context: 'useOfflineQueue', message: 'Failed to open IndexedDB' });
     }
   }, []);
 
   const enqueue = useCallback(async (action: Omit<QueuedAction, "id" | "queuedAt">) => {
-    const db = await getDB();
-    const item: QueuedAction = {
-      ...action,
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      queuedAt: Date.now(),
-    };
-    await db.add(STORE_NAME, item);
-    void registerBackgroundSync();
-    await refreshCount();
+    try {
+      const db = await getDB();
+      const item: QueuedAction = {
+        ...action,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        queuedAt: Date.now(),
+      };
+      await db.add(STORE_NAME, item);
+      void registerBackgroundSync();
+      await refreshCount();
+    } catch (err) {
+      logError({ context: 'useOfflineQueue', message: 'Failed to queue offline action', data: err instanceof Error ? err.message : String(err) });
+    }
   }, [refreshCount, registerBackgroundSync]);
 
   const syncQueue = useCallback(async () => {
@@ -85,15 +90,23 @@ export function useOfflineQueue() {
             body: JSON.stringify(action.payload),
           });
           if (res.ok) {
-            await db.delete(STORE_NAME, action.id);
+            try {
+              await db.delete(STORE_NAME, action.id);
+            } catch (err) {
+              logError({ context: 'useOfflineQueue', message: 'Failed to delete synced item from queue', data: { id: action.id, err: err instanceof Error ? err.message : String(err) } });
+            }
           }
           // If 4xx — still delete, don't retry permanent errors
           if (res.status >= 400 && res.status < 500) {
-            await db.delete(STORE_NAME, action.id);
+            try {
+              await db.delete(STORE_NAME, action.id);
+            } catch (err) {
+              logError({ context: 'useOfflineQueue', message: 'Failed to delete synced item from queue', data: { id: action.id, err: err instanceof Error ? err.message : String(err) } });
+            }
           }
           // 5xx — leave in queue, retry next time
         } catch {
-          // Network error — leave in queue
+          logError({ context: 'useOfflineQueue', message: 'Failed to sync offline queue item', data: { id: action.id, type: action.type, endpoint: action.endpoint } });
         }
       }
 

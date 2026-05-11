@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ImagePlus, RotateCcw } from "lucide-react";
 // html2canvas is dynamically imported in exportAndShare to keep it out of the initial bundle.
 import { cn, formatLiveDuration } from "@/lib/utils";
+import { logError, logWarn } from "@/lib/logger";
+import { ShareExportErrorBoundary } from "@/components/drunkva/ShareExportErrorBoundary";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -296,7 +298,7 @@ export function MorningCardInner() {
         setTitle(data.title ?? "");
       }
     } catch (err) {
-      console.error("[Title Generation Error]", err instanceof Error ? err.message : String(err));
+      logError({ context: 'MorningCardInner', message: 'Title generation failed', data: err instanceof Error ? err.message : String(err) });
       setTitle("");
       showToast("Couldn't generate a title - write your own?");
       setTimeout(() => titleInputRef.current?.focus(), 100);
@@ -463,12 +465,12 @@ export function MorningCardInner() {
                 }
               }
             } catch (e) {
-              console.debug("[Style Clone Error]", e instanceof Error ? e.message : String(e));
+              logWarn({ context: 'MorningCardInner', message: 'Style clone error', data: e instanceof Error ? e.message : String(e) });
               /* skip problematic styles on cloned element */
             }
           }
         } catch (e) {
-          console.warn("[html2canvas onclone Error]", e instanceof Error ? e.message : String(e));
+          logError({ context: 'MorningCardInner', message: 'html2canvas onclone error', data: e instanceof Error ? e.message : String(e) });
         }
       },
     };
@@ -478,13 +480,13 @@ export function MorningCardInner() {
       overlayCanvas = await html2canvas(overlayEl, renderOptions);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn("[html2canvas Render Error]", msg);
+      logError({ context: 'MorningCardInner', message: 'html2canvas render error', data: msg });
       if (/oklab|color-mix/i.test(msg)) {
         try {
-          console.debug("[html2canvas] Retrying with foreignObjectRendering");
+          logWarn({ context: 'MorningCardInner', message: 'Retrying html2canvas with foreignObjectRendering' });
           overlayCanvas = await html2canvas(overlayEl, { ...renderOptions, foreignObjectRendering: true });
         } catch (retryErr) {
-          console.error("[html2canvas Retry Failed]", retryErr instanceof Error ? retryErr.message : String(retryErr));
+          logError({ context: 'MorningCardInner', message: 'html2canvas retry failed', data: retryErr instanceof Error ? retryErr.message : String(retryErr) });
           throw err;
         }
       } else { throw err; }
@@ -528,7 +530,7 @@ export function MorningCardInner() {
       try {
         canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
       } catch (err) {
-        console.debug("[Share Detection Error]", err instanceof Error ? err.message : String(err));
+        logWarn({ context: 'MorningCardInner', message: 'Share detection error', data: err instanceof Error ? err.message : String(err) });
         canShareFiles = false;
       }
 
@@ -554,7 +556,7 @@ export function MorningCardInner() {
       const e = err as Error | undefined;
       if (e?.name !== "AbortError") {
         showToast(e?.message ?? "Share failed — try Download instead");
-        console.error("[Share Handler Error]", e?.message ?? String(err));
+        logError({ context: 'MorningCardInner', message: 'Share handler error', data: e?.message ?? String(err) });
       }
     }
   };
@@ -577,7 +579,7 @@ export function MorningCardInner() {
     } catch (err) {
       setExporting(false);
       showToast("Export failed — please try again");
-      console.error("[Download Handler Error]", err instanceof Error ? err.message : String(err));
+      logError({ context: 'MorningCardInner', message: 'Download handler error', data: err instanceof Error ? err.message : String(err) });
     }
   };
 
@@ -896,6 +898,7 @@ export function MorningCardInner() {
             </div>
 
             <div ref={previewRef} className="w-full">
+              <ShareExportErrorBoundary>
               <ShareCardCanvas
                 backgroundSrc={userPhoto}
                 containerStyle={bgStyle}
@@ -920,6 +923,7 @@ export function MorningCardInner() {
                   )}
                 </div>
               </ShareCardCanvas>
+            </ShareExportErrorBoundary>
             </div>
 
             <div className="flex gap-2">
