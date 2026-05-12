@@ -169,6 +169,11 @@ export function MorningCardInner() {
     return exportFontsPromise;
   };
 
+  const waitForNextFrame = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -314,13 +319,14 @@ export function MorningCardInner() {
     if (!previewEl) throw new Error("preview not mounted");
 
     await ensureExportFontsLoaded();
+    await waitForNextFrame();
 
     const captureWidth = previewEl.offsetWidth;
     const captureHeight = previewEl.offsetHeight;
     if (!Number.isFinite(captureWidth) || captureWidth <= 0 || !Number.isFinite(captureHeight) || captureHeight <= 0) {
       throw new Error("preview container has no measurable size");
     }
-    const captureScale = EXPORT_W / captureWidth;
+    const captureScale = Math.min(EXPORT_W / captureWidth, 2);
 
     const exportCanvas = document.createElement("canvas");
     exportCanvas.width = EXPORT_W;
