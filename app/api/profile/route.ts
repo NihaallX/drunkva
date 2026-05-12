@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import sql from "@/lib/db";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function isSameOrigin(req: Request) {
   const origin = req.headers.get("origin");
   if (!origin) return false;
@@ -20,6 +22,10 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const targetUserId = searchParams.get("userId");
+
+    if (targetUserId && !UUID_RE.test(targetUserId)) {
+      return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
+    }
 
     // Resolve which user's profile to show
     let user;
