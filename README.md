@@ -80,6 +80,9 @@ Drunkva is a mobile-first, social session tracker for your nights out. You log d
 * Client-side offline synchronization queue using `idb`
 * Morning card flow optimized: 2-step unified wrap-up + export (merged from 3-step design)
 
+**Recent Updates**
+* Peak confidence now decays from stored timestamps on read, so live views and exports stay consistent even after inactivity.
+
 ## Tech Stack
 
 | Layer | Technology | Purpose |

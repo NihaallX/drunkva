@@ -7,6 +7,7 @@ import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { ConfidenceBlock } from "@/components/drunkva/ConfidenceBlock";
 import { StatGrid } from "@/components/drunkva/StatGrid";
 import { QuickLogBar } from "@/components/drunkva/QuickLogBar";
+import { RoundSheet } from "@/components/drunkva/RoundSheet";
 import { BottomNav } from "@/components/drunkva/BottomNav";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ interface LiveSessionScreenProps {
   onEnd: () => void;
   onLogDrink: (type: string, options?: { manualDurationSeconds?: number }) => void;
   onOpenExtras: () => void;
+  onLogRound?: (payload: any) => void;
   onUpdateWashroom?: (count: number) => void;
   logging: boolean;
   userName: string;
@@ -60,6 +62,7 @@ export function LiveSessionScreen({
   onEnd,
   onLogDrink,
   onOpenExtras,
+  onLogRound,
   onUpdateWashroom,
   logging,
   userName,
@@ -76,6 +79,7 @@ export function LiveSessionScreen({
 
   const [isSpeedTiming, setIsSpeedTiming] = useState(false);
   const [activeSpeedTimer, setActiveSpeedTimer] = useState(0);
+  const [roundSheetOpen, setRoundSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!isSpeedTiming) return;
@@ -222,6 +226,29 @@ export function LiveSessionScreen({
         )}
 
         <QuickLogBar onLog={handleLogDrink} onOpenExtras={onOpenExtras} disabled={logging} />
+
+        {/* New Round button */}
+        <Button
+          id="new-round-btn"
+          variant="outline"
+          className="w-full justify-center"
+          onClick={() => setRoundSheetOpen(true)}
+          disabled={logging}
+        >
+          🍻 New Round
+        </Button>
+
+        <RoundSheet
+          open={roundSheetOpen}
+          onClose={() => setRoundSheetOpen(false)}
+          onSubmit={(payload) => {
+            if (onLogRound) {
+              onLogRound(payload);
+            }
+          }}
+          sessionId={session.id || ""}
+          isLoading={logging}
+        />
       </div>
 
       <BottomNav />

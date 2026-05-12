@@ -7,6 +7,8 @@ import { LiveSessionScreen } from "@/components/drunkva/LiveSessionScreen";
 import { ExtrasSheet } from "@/components/drunkva/ExtrasSheet";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useUser } from "@/hooks/useUser";
+import { useToast } from "@/hooks/use-toast";
+import { logError } from "@/lib/logger";
 
 interface ProfileData {
   user: { id: string; real_name: string; alias: string | null; avatar_url: string | null };
@@ -238,6 +240,85 @@ export default function SessionPage() {
     [session.id, logging, enqueue]
   );
 
+  const logRound = useCallback(
+    async (roundPayload: any) => {
+      if (!session.id || logging) return;
+      setLogging(true);
+
+      // Build the API payload with round flag
+      const apiPayload = {
+        round: true,
+        round_id: roundPayload.round_id,
+        session_ids: roundPayload.session_ids,
+        drinks: roundPayload.drinks,
+      };
+
+      const drinkCount = roundPayload.drinks.length;
+
+      // Optimistically add drinks to local state
+      const tempDrinks = roundPayload.drinks.map((d: any, i: number) => ({
+        id: `temp-round-${roundPayload.round_id}-${i}`,
+        type: d.type,
+        logged_at: new Date().toISOString(),
+        duration_seconds: d.manual_duration_seconds ?? null,
+        timing_method: d.manual_duration_seconds ? "stopwatch" : "gap",
+      }));
+
+      setSession((s) => ({
+        ...s,
+        drinks: [...s.drinks, ...tempDrinks],
+      }));
+
+      // Try to send online, queue offline
+      if (!navigator.onLine) {
+        await enqueue({ type: "LOG_ROUND", payload: apiPayload, endpoint: "/api/drinks", method: "POST" });
+        setLogging(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/drinks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(apiPayload),
+        });
+
+        if (res.ok) {
+          const { drinks: loggedDrinks } = await res.json();
+          // Update local state with real drink IDs from server
+          setSession((s) => {
+            const nextDrinks = [...s.drinks];
+            loggedDrinks.forEach((drink: any, i: number) => {
+              const idx = nextDrinks.findIndex((d) => d.id === tempDrinks[i].id);
+              if (idx >= 0) {
+                nextDrinks[idx] = drink;
+              }
+            });
+            return { ...s, drinks: nextDrinks };
+          });
+        } else {
+          // Revert optimistic update
+          setSession((s) => ({
+            ...s,
+            drinks: s.drinks.filter((d) => !d.id?.startsWith("temp-round-")),
+          }));
+          logError({ context: "logRound", message: "Failed to log round", data: res.statusText });
+        }
+      } catch (err) {
+        // Revert optimistic update and queue
+        setSession((s) => ({
+          ...s,
+          drinks: s.drinks.filter((d) => !d.id?.startsWith("temp-round-")),
+        }));
+        await enqueue({ type: "LOG_ROUND", payload: apiPayload, endpoint: "/api/drinks", method: "POST" });
+        logError({ context: "logRound", message: "Failed to log round (queued)", data: err });
+      }
+
+      setLogging(false);
+    },
+    [session.id, logging, enqueue]
+  );
+
   const handleExtrasUpdate = async (data: {
     burpCount?: number;
     washroomCount?: number;
@@ -325,6 +406,7 @@ export default function SessionPage() {
         session={session}
         onEnd={endSession}
         onLogDrink={logDrink}
+        onLogRound={logRound}
         onOpenExtras={() => setExtrasOpen(true)}
         onUpdateWashroom={handleWashroomUpdate}
         logging={logging}
@@ -337,7 +419,6 @@ export default function SessionPage() {
         open={extrasOpen}
         onClose={() => setExtrasOpen(false)}
         burpCount={session.burpCount}
-        washroomCount={session.washroomCount}
         chaknaLevel={session.chaknaLevel}
         onUpdate={handleExtrasUpdate}
       />

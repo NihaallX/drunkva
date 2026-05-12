@@ -5,6 +5,7 @@ import { calculateConfidence } from "@/lib/confidence";
 import type { DrinkLog } from "@/lib/confidence";
 import { MAX_SPEED_SECONDS, MIN_REALISTIC_SECONDS, normalizeDuration } from "@/lib/drink-speed";
 import { drinksLimiter } from "@/lib/rate-limit";
+import { logError } from "@/lib/logger";
 
 const VALID_DRINK_TYPES = ["beer", "shot", "wine", "cocktail", "spirit"] as const;
 type DrinkType = typeof VALID_DRINK_TYPES[number];
@@ -33,6 +34,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
+
+    // Check if this is a round batch request
+    if (body.round === true) {
+      return handleRoundBatch(user.id, body);
+    }
+
+    // Otherwise, handle single drink log (existing flow)
     const { session_id, type, logged_at, manual_duration_seconds } = body;
 
     if (!session_id || !type) {
@@ -158,7 +166,185 @@ export async function POST(req: Request) {
     return NextResponse.json({ drink, confidence: conf, is_pr }, { status: 201 });
   } catch (err) {
     if (err instanceof Response) return err;
-    console.error("POST /api/drinks failed", err);
+    logError({ context: "POST /api/drinks", message: "Failed to log drink", data: err });
     return NextResponse.json({ error: "Failed to log drink" }, { status: 500 });
+  }
+}
+
+// Handle round-based batch drink logging
+async function handleRoundBatch(userId: string, body: any) {
+  try {
+    const { round_id, drinks: drinksList, session_ids } = body;
+
+    // Validate round_id UUID
+    if (!round_id || typeof round_id !== "string" || !UUID_RE.test(round_id)) {
+      return NextResponse.json({ error: "Invalid or missing round_id" }, { status: 400 });
+    }
+
+    // Validate drinks array
+    if (!Array.isArray(drinksList) || drinksList.length === 0) {
+      return NextResponse.json({ error: "drinks array required and must not be empty" }, { status: 400 });
+    }
+
+    // Validate session_ids array
+    if (!Array.isArray(session_ids) || session_ids.length === 0) {
+      return NextResponse.json({ error: "session_ids array required and must not be empty" }, { status: 400 });
+    }
+
+    // For now, solo flow only: require exactly one session and it must belong to caller
+    if (session_ids.length !== 1) {
+      return NextResponse.json({ error: "Group rounds not yet supported; provide exactly one session_id" }, { status: 400 });
+    }
+
+    const sessionId = session_ids[0];
+    if (typeof sessionId !== "string" || !UUID_RE.test(sessionId)) {
+      return NextResponse.json({ error: "Invalid session_id format" }, { status: 400 });
+    }
+
+    // Validate all drinks in the array
+    for (const drink of drinksList) {
+      if (!drink.type || typeof drink.type !== "string") {
+        return NextResponse.json({ error: "Each drink must have a type" }, { status: 400 });
+      }
+      if (!VALID_DRINK_TYPES.includes(drink.type as DrinkType)) {
+        return NextResponse.json(
+          { error: `Invalid drink type: ${drink.type}. Must be one of: ${VALID_DRINK_TYPES.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      if (drink.manual_duration_seconds !== undefined && drink.manual_duration_seconds !== null) {
+        if (typeof drink.manual_duration_seconds !== "number" || !Number.isFinite(drink.manual_duration_seconds) || drink.manual_duration_seconds < 0) {
+          return NextResponse.json({ error: "Invalid manual_duration_seconds in drink" }, { status: 400 });
+        }
+      }
+    }
+
+    // Fetch and validate session
+    const [session] = await sql`
+      SELECT * FROM sessions
+      WHERE id = ${sessionId} AND user_id = ${userId} AND end_time IS NULL
+    `;
+    if (!session) {
+      return NextResponse.json({ error: "Session not found, belongs to another user, or is already ended" }, { status: 404 });
+    }
+
+    // TODO: Future - support group rounds with group_session_id validation
+    // TODO: Future - notify round participants after successful logging
+
+    // Insert all drinks in a transaction
+    const loggedDrinks = [];
+    const now = new Date().toISOString();
+
+    for (let i = 0; i < drinksList.length; i++) {
+      const drink = drinksList[i];
+      const drinkType = drink.type as DrinkType;
+
+      // Calculate duration for this drink
+      let duration_seconds: number | null = null;
+      let timing_method: "gap" | "stopwatch" = "gap";
+
+      if (
+        typeof drink.manual_duration_seconds === "number" &&
+        drink.manual_duration_seconds >= MIN_REALISTIC_SECONDS &&
+        drink.manual_duration_seconds <= MAX_SPEED_SECONDS
+      ) {
+        duration_seconds = Math.floor(drink.manual_duration_seconds);
+        timing_method = "stopwatch";
+      } else {
+        // Gap-based: time since last drink in this session (in order of drinks array)
+        if (i > 0 && loggedDrinks[i - 1].logged_at) {
+          const lastTime = new Date(loggedDrinks[i - 1].logged_at);
+          const gap = Math.floor((new Date(now).getTime() - lastTime.getTime()) / 1000);
+          duration_seconds = normalizeDuration(gap);
+        } else {
+          // First drink in round: use gap from last drink in session
+          const [previousDrink] = await sql`
+            SELECT logged_at
+            FROM drinks
+            WHERE session_id = ${sessionId}
+            ORDER BY logged_at DESC
+            LIMIT 1
+          `;
+          if (previousDrink) {
+            const lastTime = new Date(previousDrink.logged_at);
+            const gap = Math.floor((new Date(now).getTime() - lastTime.getTime()) / 1000);
+            duration_seconds = normalizeDuration(gap);
+          }
+        }
+      }
+
+      const [insertedDrink] = await sql`
+        INSERT INTO drinks (session_id, type, logged_at, duration_seconds, timing_method, round_id)
+        VALUES (${sessionId}, ${drinkType}, ${now}, ${duration_seconds}, ${timing_method}, ${round_id})
+        RETURNING *
+      `;
+      loggedDrinks.push(insertedDrink);
+    }
+
+    // Recalculate confidence for the session
+    const allDrinks = await sql`
+      SELECT type, logged_at FROM drinks WHERE session_id = ${sessionId} ORDER BY logged_at ASC
+    `;
+    const conf = calculateConfidence(allDrinks as DrinkLog[]);
+
+    await sql`
+      UPDATE sessions SET
+        peak_confidence_pct = GREATEST(peak_confidence_pct, ${conf.peak}),
+        peak_stage = CASE
+          WHEN ${conf.peak} > peak_confidence_pct THEN ${conf.peakStage}
+          ELSE peak_stage
+        END,
+        peak_confidence_updated_at = CASE
+          WHEN ${conf.peak} > peak_confidence_pct THEN ${now}
+          ELSE COALESCE(peak_confidence_updated_at, ${now})
+        END
+      WHERE id = ${sessionId}
+    `;
+
+    // Update PBs for any PRs
+    const [userRow] = await sql`SELECT * FROM users WHERE id = ${userId}`;
+
+    const prUpdates: Record<DrinkType, number | null> = {
+      beer: null,
+      shot: null,
+      wine: null,
+      cocktail: null,
+      spirit: null,
+    };
+
+    for (const drink of loggedDrinks) {
+      if (drink.duration_seconds !== null) {
+        const drinkType = drink.type as DrinkType;
+        const pbCol = `pb_${drinkType}_seconds`;
+        const currentPB = userRow?.[pbCol];
+
+        const isPR = currentPB === null || drink.duration_seconds < currentPB;
+        if (isPR) {
+          prUpdates[drinkType] = drink.duration_seconds;
+        }
+      }
+    }
+
+    // Apply PR updates
+    if (prUpdates.beer !== null) await sql`UPDATE users SET pb_beer_seconds = ${prUpdates.beer} WHERE id = ${userId}`;
+    if (prUpdates.shot !== null) await sql`UPDATE users SET pb_shot_seconds = ${prUpdates.shot} WHERE id = ${userId}`;
+    if (prUpdates.wine !== null) await sql`UPDATE users SET pb_wine_seconds = ${prUpdates.wine} WHERE id = ${userId}`;
+    if (prUpdates.cocktail !== null) await sql`UPDATE users SET pb_cocktail_seconds = ${prUpdates.cocktail} WHERE id = ${userId}`;
+    if (prUpdates.spirit !== null) await sql`UPDATE users SET pb_spirit_seconds = ${prUpdates.spirit} WHERE id = ${userId}`;
+
+    return NextResponse.json(
+      {
+        success: true,
+        round_id,
+        drinks_logged: loggedDrinks.length,
+        drinks: loggedDrinks,
+        confidence: conf,
+      },
+      { status: 201 }
+    );
+  } catch (err) {
+    if (err instanceof Response) return err;
+    logError({ context: "POST /api/drinks (round batch)", message: "Failed to log round", data: err });
+    return NextResponse.json({ error: "Failed to log round" }, { status: 500 });
   }
 }

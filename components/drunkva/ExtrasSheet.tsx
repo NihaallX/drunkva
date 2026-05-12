@@ -16,11 +16,9 @@ interface ExtrasSheetProps {
   open: boolean;
   onClose: () => void;
   burpCount: number;
-  washroomCount: number;
   chaknaLevel: "none" | "light" | "heavy";
   onUpdate: (data: {
     burpCount?: number;
-    washroomCount?: number;
     chaknaLevel?: "none" | "light" | "heavy";
   }) => void;
 }
@@ -76,7 +74,6 @@ export function ExtrasSheet({
   open,
   onClose,
   burpCount,
-  washroomCount,
   chaknaLevel,
   onUpdate,
 }: ExtrasSheetProps) {
@@ -113,7 +110,7 @@ export function ExtrasSheet({
             Extras
           </DrawerTitle>
           <DrawerDescription className="sr-only">
-            Track burps, washroom trips, and chakna for the current session.
+            Track burps and chakna for the current session.
           </DrawerDescription>
         </DrawerHeader>
 
@@ -125,15 +122,6 @@ export function ExtrasSheet({
             incrementId="burp-plus"
             onDecrement={() => onUpdate({ burpCount: Math.max(0, burpCount - 1) })}
             onIncrement={() => onUpdate({ burpCount: burpCount + 1 })}
-          />
-
-          <CounterRow
-            label="Washroom Trips"
-            value={washroomCount}
-            decrementId="wash-minus"
-            incrementId="wash-plus"
-            onDecrement={() => onUpdate({ washroomCount: Math.max(0, washroomCount - 1) })}
-            onIncrement={() => onUpdate({ washroomCount: washroomCount + 1 })}
           />
 
           {/* Chakna — uses ToggleGroup from shadcn */}

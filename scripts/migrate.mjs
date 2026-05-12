@@ -242,4 +242,16 @@ await sql`
 `;
 console.log('Added and backfilled peak_confidence_updated_at');
 
+// 16. Add round_id to drinks for round-based logging
+await sql`
+  ALTER TABLE drinks
+  ADD COLUMN IF NOT EXISTS round_id UUID
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_drinks_round_id
+  ON drinks (round_id)
+  WHERE round_id IS NOT NULL
+`;
+console.log('Added round_id column and index to drinks');
+
 console.log('All migrations complete');
