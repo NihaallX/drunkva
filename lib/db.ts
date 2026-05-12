@@ -1,9 +1,53 @@
-import { neon } from "@neondatabase/serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
 import { validateEnv } from "@/lib/env";
 
 validateEnv();
 
-const sql = neon(process.env.DATABASE_URL!);
+if (typeof WebSocket !== "undefined") {
+  neonConfig.webSocketConstructor = WebSocket;
+}
+
+const globalForDb = globalThis as typeof globalThis & {
+  __drunkvaNeonPool?: Pool;
+};
+
+const pool = globalForDb.__drunkvaNeonPool ?? new Pool({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+if (process.env.NODE_ENV !== "production") {
+  globalForDb.__drunkvaNeonPool = pool;
+}
+
+function buildQuery(strings: TemplateStringsArray, values: unknown[]) {
+  let text = "";
+  const params: unknown[] = [];
+
+  for (let index = 0; index < strings.length; index += 1) {
+    text += strings[index];
+    if (index < values.length) {
+      params.push(values[index]);
+      text += `$${params.length}`;
+    }
+  }
+
+  return { text, params };
+}
+
+const sql = Object.assign(
+  async (strings: TemplateStringsArray, ...values: unknown[]) => {
+    const { text, params } = buildQuery(strings, values);
+    const result = await pool.query(text, params);
+    return result.rows;
+  },
+  {
+    query: async (text: string, params: unknown[] = []) => {
+      const result = await pool.query(text, params);
+      return result.rows;
+    },
+  }
+);
+
 export default sql;
 
 // Type helpers
