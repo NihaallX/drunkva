@@ -123,3 +123,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Landing-specific body copy utility for consistent typography (Tailwind-applied) */
+@layer components {
+  .landing-body {
+    font-family: var(--font-sans);
+    color: var(--color-muted-foreground);
+    max-width: 65ch;
+    @apply text-base leading-relaxed;
+  }
+  @screen sm {
+    .landing-body {
+      @apply text-lg;
+    }
+  }
+}

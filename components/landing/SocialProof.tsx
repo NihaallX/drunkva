@@ -97,10 +97,7 @@ export default function SocialProof() {
               >
                 "
               </span>
-              <p
-                className="text-base leading-relaxed italic -mt-6"
-                style={{ color: "#fff" }}
-              >
+              <p className="landing-body text-base sm:text-lg leading-relaxed italic -mt-6 max-w-[65ch]" style={{ color: "#fff" }}>
                 {t.quote}
               </p>
               <div

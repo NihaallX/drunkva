@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import sql from "@/lib/db";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LEGAL_CONSENT_VERSION = "2026-05";
 interface SimpleAuthDbUser {
   id: string;
   real_name: string;
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
     const emailRaw = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const realName = typeof body?.real_name === "string" ? body.real_name.trim() : "";
     const aliasRaw = typeof body?.alias === "string" ? body.alias.trim() : "";
+    const acceptedLegal = body?.accepted_legal === true;
 
     if (!EMAIL_RE.test(emailRaw)) {
       return NextResponse.json({ error: "Please enter a valid email." }, { status: 400 });
@@ -27,6 +29,12 @@ export async function POST(req: Request) {
     }
     if (aliasRaw.length > 30) {
       return NextResponse.json({ error: "Alias is too long." }, { status: 400 });
+    }
+    if (!acceptedLegal) {
+      return NextResponse.json(
+        { error: "You must accept Terms and Privacy to continue." },
+        { status: 400 }
+      );
     }
 
     const alias = aliasRaw || null;
@@ -52,6 +60,21 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Unable to sign in." }, { status: 500 });
+    }
+
+    // Backward-safe persistence: if consent columns are not migrated yet,
+    // sign-in still succeeds and we only log a warning.
+    try {
+      await sql`
+        UPDATE users
+        SET
+          terms_accepted_at = COALESCE(terms_accepted_at, NOW()),
+          privacy_accepted_at = COALESCE(privacy_accepted_at, NOW()),
+          legal_consent_version = COALESCE(legal_consent_version, ${LEGAL_CONSENT_VERSION})
+        WHERE id = ${user.id}
+      `;
+    } catch (consentErr) {
+      console.warn("simple-auth consent persistence skipped", consentErr);
     }
 
     return NextResponse.json({

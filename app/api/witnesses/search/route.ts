@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth";
-import { createRateLimiter } from "@/lib/rate-limit";
 import sql from "@/lib/db";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { createRateLimiter } from "@/lib/rate-limit";
 
 const searchLimiter = createRateLimiter({ windowMs: 60_000, max: 30 });
 
-// GET /api/witnesses/search?q=query&sessionId=optional — search for users to tag as witnesses
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// GET /api/witnesses/search?q=query — search for users to tag as witnesses
 // Returns people the current user follows or who follow them
 export async function GET(req: Request) {
   try {
@@ -16,18 +16,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const q = searchParams.get("q")?.trim() ?? "";
-    const sessionId = searchParams.get("sessionId")?.trim() ?? null;
-
-    if (sessionId && !UUID_RE.test(sessionId)) {
-      return NextResponse.json({ error: "Invalid sessionId format" }, { status: 400 });
+    const rate = searchLimiter.check(user.id);
+    if (!rate.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    // Rate limit: 30 requests per 60 seconds
-    const limit = searchLimiter.check(user.id);
-    if (!limit.allowed) {
-      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    const { searchParams } = new URL(req.url);
+    const q = searchParams.get("q")?.trim() ?? "";
+    const sessionId = searchParams.get("sessionId");
+    if (sessionId && !UUID_REGEX.test(sessionId)) {
+      return NextResponse.json({ error: "Invalid session ID" }, { status: 400 });
     }
 
     const results = await sql`

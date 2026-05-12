@@ -361,7 +361,12 @@ export default function SessionDetailPage() {
           {/* Share button */}
           <Button
             id="share-session-btn"
-            onClick={() => router.push(`/morning-card?sessionId=${session.id}`)}
+            onClick={() => {
+              if (session.id) {
+                localStorage.setItem(`dv-allow-morning-card-${session.id}`, "1");
+              }
+              router.push(`/morning-card?sessionId=${session.id}`);
+            }}
             className="bg-primary text-primary-foreground active:bg-primary/90 h-12 text-[15px] font-medium"
           >
             Share this session

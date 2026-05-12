@@ -57,6 +57,7 @@ const FlowArt: React.FC<FlowArtProps> = ({
 }) => {
   const containerRef = useRef<HTMLElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [disableAnimations, setDisableAnimations] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -66,9 +67,17 @@ const FlowArt: React.FC<FlowArtProps> = ({
     return () => mq.removeEventListener('change', update);
   }, []);
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setDisableAnimations(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   useGSAP(
     () => {
-      if (!containerRef.current || reducedMotion) return;
+      if (!containerRef.current || reducedMotion || disableAnimations) return;
 
       const sections = Array.from(
         containerRef.current.querySelectorAll<HTMLElement>('[data-flow-section]'),
@@ -117,7 +126,7 @@ const FlowArt: React.FC<FlowArtProps> = ({
         triggers.forEach((t) => t.kill());
       };
     },
-    { scope: containerRef, dependencies: [childCount(children), reducedMotion] },
+    { scope: containerRef, dependencies: [childCount(children), reducedMotion, disableAnimations] },
   );
 
   return (

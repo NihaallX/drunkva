@@ -207,4 +207,39 @@ await sql`
 `;
 console.log('Added requested indexes');
 
+// 13. Add legal consent columns to users
+await sql`
+  ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS privacy_accepted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS legal_consent_version TEXT
+`;
+console.log('Added legal consent columns to users');
+
+// 14. Add waitlist table for landing page email capture
+await sql`
+  CREATE TABLE IF NOT EXISTS waitlist (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    name TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )
+`;
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_waitlist_email
+  ON waitlist (email)
+`;
+console.log('Created waitlist table and index');
+
+// 15. Add confidence freshness timestamp to sessions
+await sql`
+  ALTER TABLE sessions
+  ADD COLUMN IF NOT EXISTS peak_confidence_updated_at TIMESTAMPTZ
+`;
+await sql`
+  UPDATE sessions
+  SET peak_confidence_updated_at = COALESCE(peak_confidence_updated_at, end_time, start_time, created_at)
+`;
+console.log('Added and backfilled peak_confidence_updated_at');
+
 console.log('All migrations complete');

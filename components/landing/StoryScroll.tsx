@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterEffectSmooth } from "@/components/ui/typewriter-effect";
 import { AnimatedText } from "@/components/ui/animated-underline-text-one";
 import FlowArt, { FlowSection } from "@/components/ui/story-scroll";
+import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 
 // ─── Typewriter Lines ────────────────────────────────────────────────────────
 const allLines = [
@@ -37,16 +38,22 @@ const allLines = [
 function TypewriterCycler() {
   const [lineIndex, setLineIndex] = useState(0);
   const [visible, setVisible] = useState(true);
+  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setVisible(false);
-      setTimeout(() => {
+      timeoutRef.current = window.setTimeout(() => {
         setLineIndex((i) => (i + 1) % allLines.length);
         setVisible(true);
       }, 400);
     }, 3500);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   return (
@@ -177,6 +184,44 @@ function Divider({ color = "rgba(255,255,255,0.12)" }: { color?: string }) {
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
 export default function StoryScroll() {
+  const [landingStats, setLandingStats] = useState({ nightsTracked: 2400, drinksLogged: 18 });
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadStats = async () => {
+      try {
+        const res = await fetch("/api/landing-stats", {
+          method: "GET",
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+
+        const data = (await res.json()) as {
+          nightsTracked?: number;
+          drinksLogged?: number;
+        };
+
+        setLandingStats({
+          nightsTracked:
+            typeof data.nightsTracked === "number" && Number.isFinite(data.nightsTracked)
+              ? Math.max(0, Math.floor(data.nightsTracked))
+              : 0,
+          drinksLogged:
+            typeof data.drinksLogged === "number" && Number.isFinite(data.drinksLogged)
+              ? Math.max(0, Math.floor(data.drinksLogged))
+              : 0,
+        });
+      } catch {
+        // Keep fallback values if stats endpoint is unavailable.
+      }
+    };
+
+    loadStats();
+    return () => controller.abort();
+  }, []);
+
   return (
     <FlowArt aria-label="Drunkva story">
 
@@ -211,17 +256,11 @@ export default function StoryScroll() {
           }}
         />
 
-        {/* ── Top bar: DRUNKVA wordmark + eyebrow ── */}
+        {/* ── Top bar: wordmark + eyebrow ── */}
         <div className="relative flex items-center justify-between" style={{ zIndex: 2 }}>
           {/* Wordmark */}
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">🍺</span>
-            <span
-              className="text-2xl sm:text-3xl font-black tracking-tight"
-              style={{ color: "#FC4C02", fontFamily: "var(--font-heading)" }}
-            >
-              DRUNKVA
-            </span>
+            <DrunkvaLogo className="h-8" />
           </div>
 
           {/* Eyebrow badge */}
@@ -295,18 +334,7 @@ export default function StoryScroll() {
               />
               <button
                 id="join-waitlist-hero"
-                className="relative w-full sm:w-auto px-8 py-4 text-sm font-bold rounded-xl transition-all duration-200 active:scale-95"
-                style={{
-                  background: "#FC4C02",
-                  color: "#fff",
-                  boxShadow: "0 4px 24px rgba(252,76,2,0.32)",
-                }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLButtonElement).style.background = "#C43D00")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLButtonElement).style.background = "#FC4C02")
-                }
+                className="relative w-full sm:w-auto px-8 py-4 text-sm font-bold rounded-xl transition-all duration-200 active:scale-95 bg-[#FC4C02] hover:bg-[#C43D00] text-white shadow-[0_4px_24px_rgba(252,76,2,0.32)]"
                 onClick={() =>
                   document
                     .getElementById("waitlist-section")
@@ -356,7 +384,7 @@ export default function StoryScroll() {
           </h2>
         </div>
         <Divider color="rgba(255,255,255,0.2)" />
-        <p className="max-w-[50ch] text-[clamp(1rem,2.5vw,1.75rem)] font-normal leading-relaxed opacity-90">
+        <p className="landing-body max-w-[65ch] text-base sm:text-lg font-normal leading-relaxed text-[rgba(255,255,255,0.9)]">
           Open Drunkva, give your session a name, and gather your crew. One tap and the night begins.
         </p>
       </FlowSection>
@@ -382,7 +410,7 @@ export default function StoryScroll() {
           </h2>
         </div>
         <Divider />
-        <p className="max-w-[50ch] text-[clamp(1rem,2.5vw,1.75rem)] font-normal leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
+        <p className="landing-body max-w-[65ch] text-base sm:text-lg font-normal leading-relaxed text-[rgba(255,255,255,0.9)]">
           Add drinks in real time. Friends can verify — or expose — every round. Your confidence curve builds live, drink by drink.
         </p>
         <Divider />
@@ -396,7 +424,7 @@ export default function StoryScroll() {
               <p className="mb-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: "#FC4C02" }}>
                 {item.label}
               </p>
-              <p className="text-[clamp(0.8rem,1.3vw,1rem)] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="landing-body text-sm sm:text-base leading-relaxed text-[rgba(255,255,255,0.7)]">
                 {item.desc}
               </p>
             </div>
@@ -481,8 +509,8 @@ export default function StoryScroll() {
         <Divider color="rgba(255,255,255,0.2)" />
         <div className="flex flex-wrap gap-[4vw]">
           {[
-            { value: "2,400+", label: "Nights tracked" },
-            { value: "18", label: "Countries" },
+            { value: landingStats.nightsTracked.toLocaleString("en-IN"), label: "Nights tracked" },
+            { value: landingStats.drinksLogged.toLocaleString("en-IN"), label: "Drinks logged" },
             { value: "0", label: "Regrets" },
           ].map((s) => (
             <div key={s.label} className="min-w-[100px]">
@@ -520,14 +548,7 @@ export default function StoryScroll() {
           <a
             href="#waitlist-section"
             id="join-waitlist-story"
-            className="inline-flex items-center gap-3 px-10 py-5 text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-200 active:scale-95"
-            style={{
-              background: "#FC4C02",
-              color: "#fff",
-              boxShadow: "0 4px 32px rgba(252,76,2,0.38)",
-            }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "#C43D00")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "#FC4C02")}
+            className="inline-flex items-center gap-3 px-10 py-5 text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-200 active:scale-95 bg-[#FC4C02] hover:bg-[#C43D00] text-white shadow-[0_4px_32px_rgba(252,76,2,0.38)]"
           >
             Join the Waitlist →
           </a>

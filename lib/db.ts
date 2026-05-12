@@ -15,6 +15,9 @@ export interface DbUser {
   alias: string | null;
   avatar_url: string | null;
   is_onboarded: boolean;
+  terms_accepted_at: string | null;
+  privacy_accepted_at: string | null;
+  legal_consent_version: string | null;
   created_at: string;
 }
 
@@ -30,6 +33,7 @@ export interface DbSession {
   active_duration_seconds: number | null;
   session_title: string | null;
   peak_confidence_pct: number;
+  peak_confidence_updated_at: string | null;
   peak_stage: string;
   washroom_count: number;
   burp_count: number;

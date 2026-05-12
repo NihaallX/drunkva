@@ -5,17 +5,44 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function Waitlist() {
   const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setError("Email is required");
+      return;
+    }
+
+    setError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: trimmedEmail, name: "" }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(typeof data.error === "string" ? data.error : "Something went wrong. Please try again.");
+        return;
+      }
+
       setSubmitted(true);
-    }, 800);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,61 +73,77 @@ export default function Waitlist() {
             <span style={{ color: "#FC4C02" }}>Be legendary.</span>
           </h2>
 
-          <p
-            className="text-base sm:text-lg mb-12 max-w-xl mx-auto leading-relaxed"
-            style={{ color: "#7A7A7A" }}
-          >
+          <p className="landing-body text-base sm:text-lg mb-12 max-w-[65ch] mx-auto leading-relaxed" style={{ color: "#7A7A7A" }}>
             We're letting in the first wave of degens. Get in before your friends do.
           </p>
 
           <AnimatePresence mode="wait">
             {!submitted ? (
-              <motion.form
+              <motion.div
                 key="form"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.4 }}
-                onSubmit={handleSubmit}
-                className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
+                className="max-w-lg mx-auto"
               >
-                <input
-                  id="waitlist-email-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  className="flex-1 px-5 py-4 rounded-xl text-sm font-medium outline-none transition-all duration-200"
-                  style={{
-                    background: "#141414",
-                    color: "#fff",
-                    border: "1px solid transparent",
-                    caretColor: "#FC4C02",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.border = "1px solid rgba(252,76,2,0.5)";
-                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(252,76,2,0.08)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.border = "1px solid transparent";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                />
-                <button
-                  id="join-waitlist-btn"
-                  type="submit"
-                  disabled={loading}
-                  className="px-7 py-4 text-sm font-bold rounded-xl transition-all duration-200 disabled:opacity-70 active:scale-95 whitespace-nowrap"
-                  style={{
-                    background: "#FC4C02",
-                    color: "#fff",
-                    boxShadow: "0 4px 20px rgba(252,76,2,0.25)",
-                  }}
-                >
-                  {loading ? "Joining..." : "Join Waitlist"}
-                </button>
-              </motion.form>
+                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    id="waitlist-email-input"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError("");
+                    }}
+                    placeholder="your@email.com"
+                    required
+                    aria-invalid={Boolean(error)}
+                    className="flex-1 px-5 py-4 rounded-xl text-sm font-medium outline-none transition-all duration-200"
+                    style={{
+                      background: "#141414",
+                      color: "#fff",
+                      border: "1px solid transparent",
+                      caretColor: "#FC4C02",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.border = "1px solid rgba(252,76,2,0.5)";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(252,76,2,0.08)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.border = "1px solid transparent";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  />
+                  <button
+                    id="join-waitlist-btn"
+                    type="submit"
+                    disabled={loading}
+                    className="px-7 py-4 text-sm font-bold rounded-xl transition-all duration-200 disabled:opacity-70 active:scale-95 whitespace-nowrap"
+                    style={{
+                      background: "#FC4C02",
+                      color: "#fff",
+                      boxShadow: "0 4px 20px rgba(252,76,2,0.25)",
+                    }}
+                  >
+                    {loading ? "Joining..." : "Join Waitlist"}
+                  </button>
+                </form>
+
+                <AnimatePresence mode="wait">
+                  {error && (
+                    <motion.p
+                      key="error"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="mt-3 text-left text-xs font-medium text-red-400"
+                    >
+                      {error}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             ) : (
               <motion.div
                 key="success"
@@ -116,7 +159,7 @@ export default function Waitlist() {
               >
                 <p className="text-3xl mb-3">🍻</p>
                 <p className="text-xl font-bold mb-2" style={{ color: "#fff" }}>
-                  You're in.
+                  You're on the list 🍺
                 </p>
                 <p className="text-sm" style={{ color: "#7A7A7A" }}>
                   Try not to drink before we launch.

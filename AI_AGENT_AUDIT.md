@@ -1,8 +1,16 @@
 # Drunkva — AI Agent Audit & Codebase Guide
 
-**Last Updated:** May 9, 2026 (Responsive Design Update)
+**Last Updated:** May 11, 2026 (Landing Stats & Legal Framework)
 **Consolidated From:** DRUNKVA_FULL_STACK_AUDIT.md, docs/AUDIT.md, docs/PERFORMANCE_AUDIT.md  
 **Purpose:** Provide AI agents with complete context about project architecture, technical debt, security posture, and priorities.
+
+### Latest Session Summary (May 11, 2026)
+- ✅ **Landing stats API:** Deployed `/api/landing-stats` with 5-min caching (nightsTracked, drinksLogged)
+- ✅ **Mobile responsiveness:** Fixed landing page layout on mobile; disabled GSAP animations ≤768px
+- ✅ **Legal compliance:** Added Terms/Privacy pages, consent checkbox in `/simple-auth`, DB migration for consent tracking
+- ✅ **Performance:** Replaced runtime hover handlers with CSS classes, fixed typewriter wrapping on mobile
+- ✅ **Build fixes:** Added TypeScript declarations for lenis import, resolved Vercel build errors
+- Commits: `feat(landing): live stats...`, `fix(landing): mobile-responsive layout...`, `docs(audit): update with latest improvements...`
 
 ---
 
@@ -37,13 +45,13 @@ Drunkva is a **mobile-first social drinking session tracker** (Strava for nights
 | Category | Score | Status | Priority |
 |----------|-------|--------|----------|
 | **Backend Performance** | 5/10 | ⚠️ Concerning | N+1 queries, unbounded rate limiter, missing indexes |
-| **Frontend Performance** | 6/10 | ⚠️ Fair | html2canvas overhead, aggressive SW caching, re-render thrashing |
-| **Security** | 7/10 | ⚠️ Fair | Missing rate limits, unprotected public routes, webhook validation gap |
+| **Frontend Performance** | 6.5/10 | ⚠️ Fair | html2canvas overhead, aggressive SW caching; improved: CSS hover handlers, mobile wrapping |
+| **Security** | 7.5/10 | ⚠️ Fair | Added: legal consent flow; remaining: webhook validation, rate limits, public routes |
 | **Reliability** | 4/10 | 🔴 Critical | Race conditions, no transactions, offline queue sync bug |
 | **Code Quality** | 6/10 | ⚠️ Fair | Duplicated types, bare catch blocks, inconsistent error handling |
-| **Mobile/PWA** | 6/10 | ⚠️ Fair | SW cache strategy issues, no offline reads, sync logic fragmented |
+| **Mobile/PWA** | 7/10 | ✅ Improved | Landing responsive ✅, Lenis smooth scroll ✅, GSAP disabled on mobile ✅ |
 
-**Overall:** 6.2/10 — Solid MVP with critical issues blocking scale. Priority: fix reliability + security before 10k users.
+**Overall:** 6.4/10 — Solid MVP with critical issues blocking scale. Priority: fix reliability + security before 10k users.
 
 ---
 
@@ -122,6 +130,38 @@ This section is the source of truth when it conflicts with older findings below.
 - html2canvas export path is still heavy and can cause perceived jank on low-end devices.
 - CSP still allows `unsafe-inline` in production policy; removing it would require nonce-based script handling.
 - Document still contains stale sections below that mention already-resolved issues; treat this update section as canonical.
+
+### Recent Improvements (May 11, 2026)
+
+#### Landing Stats API
+- **File:** `app/api/landing-stats/route.ts` (new)
+- **Purpose:** Public endpoint returning aggregated metrics for landing page
+- **Response:** `{ nightsTracked: 71, drinksLogged: 181 }` (DB-driven, no user data exposed)
+- **Caching:** 5-minute TTL to reduce DB load
+- **Wiring:** Integrated into `components/landing/StoryScroll.tsx` with fallback values
+- **Status:** ✅ Implemented, tested locally, deployed
+
+#### Mobile Responsiveness
+- **Files:** `components/ui/story-scroll.tsx`, `components/ui/typewriter-effect.tsx`
+- **Changes:**
+  - Disabled GSAP pin/rotation animations on screens ≤768px (prevents stacking issues)
+  - Typewriter text now wraps on mobile (`whitespace-normal sm:whitespace-nowrap`)
+  - Phone mockups properly sized for mobile viewport
+- **Testing:** Verified on 375×667 viewport; all sections render cleanly
+- **Status:** ✅ Fixed, committed, tested
+
+#### Legal Compliance Framework
+- **Files:** `app/terms/page.tsx`, `app/privacy/page.tsx`, `components/landing/Footer.tsx`, `app/simple-auth/page.tsx`, `app/api/simple-auth/route.ts`
+- **DB Migration:** Added `terms_accepted_at`, `privacy_accepted_at`, `legal_consent_version` to `users` table
+- **Consent Flow:** Checkbox in `/simple-auth` blocks signup if unchecked; server validates and persists on success
+- **Backward Safety:** Try/catch on consent persistence allows sign-in to succeed even if DB update fails
+- **Status:** ✅ Implemented, DB migrated locally, persists to production on next deploy
+
+#### Performance & Build Fixes
+- **CSS Hover Handlers:** Replaced runtime JS hover effects with `hover:bg-[#C43D00]` classes (reduced JS overhead)
+- **Lenis Integration:** Added smooth scroll library with proper TypeScript declarations (`types/lenis-react.d.ts`)
+- **Typewriter Timeout Cleanup:** Fixed memory leak by clearing timeout on unmount
+- **Status:** ✅ Committed, passing local build
 ---
 
 ## Project Overview
@@ -708,6 +748,47 @@ Every API route calls `getOrCreateUser()`:
 
 3. **Personal Best Updates** ([app/api/drinks/route.ts](app/api/drinks/route.ts)) ⚠️
    - Up to 5 separate UPDATE statements for PB recalculation (one per drink type)
+   - **Fix:** Batch into single UPDATE with CASE expressions
+
+---
+
+## Prioritized Fix List (Updated May 11, 2026)
+
+### Critical (Deploy Before Next Release)
+1. ✅ **[MAY 11 DONE]** Landing page mobile responsiveness — disabled GSAP on ≤768px, fixed typewriter wrapping
+2. ✅ **[MAY 11 DONE]** Legal consent framework — Terms/Privacy pages, consent checkbox, DB persistence
+3. Webhook signature validation — Add explicit null check for `CLERK_WEBHOOK_SECRET`
+4. Wrap session DELETE in DB transaction to prevent cascade race conditions
+5. Service Worker cache strategy & version bump to prevent stale code propagation
+
+### High Priority (Within 1 Sprint)
+6. ✅ **[MAY 11 DONE]** Replace runtime hover handlers with CSS classes (performance improvement)
+7. ✅ **[MAY 11 DONE]** Add landing stats endpoint (`/api/landing-stats`) for public metrics
+8. Refactor feed aggregation to remove N+1 queries (20 sessions → 100+ queries currently)
+9. Use dedicated `INTERNAL_API_SECRET` instead of `CLERK_SECRET_KEY`
+10. Add rate limiting to `/api/cheers` (currently unprotected)
+11. Add rate limiting to `/api/title` (Groq API costs unbounded)
+12. Add LRU eviction to in-memory rate limiter (`lib/rate-limit.ts`)
+13. Add missing database indexes: `follows(follower_id, following_id)`, `sessions(end_time)`, `push_subscriptions(user_id)`
+
+### Medium Priority (2 Sprints)
+14. Enforce strict CSP in production (nonces for inline scripts)
+15. Replace bare catch blocks with Sentry logging and user-friendly fallbacks
+16. Add SWR/React Query to all data-fetching pages (currently use raw fetch in useEffect)
+
+---
+
+## Quick Wins (Can Ship Today)
+1. ✅ **[MAY 11 DONE]** Centralize landing body typography with `.landing-body` utility
+2. ✅ **[MAY 11 DONE]** Add live landing stats endpoint
+3. ✅ **[MAY 11 DONE]** Fix typewriter timeout cleanup
+4. Add UUID validation to follow/profile endpoints
+5. Add logging to bare `catch` blocks
+6. Bump Service Worker cache name to invalidate stale clients
+
+---
+
+_This document is maintained for AI agent context. Updated May 11, 2026 with latest improvements from landing redesign sprint._
    - Could partially update if one fails
    - **Fix:** Batch into single UPDATE with CASE expressions
 
