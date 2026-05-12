@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk, Barlow_Condensed } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallPrompt } from "@/components/drunkva/InstallPrompt";
@@ -104,12 +105,7 @@ export default function RootLayout({
             </Providers>
           </div>
         </div>
-        <script
-          async
-          dangerouslySetInnerHTML={{
-            __html: `if ('serviceWorker' in navigator) { window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(err){ console.error('[layout] Service Worker registration failed', err); }); }); }`,
-          }}
-        />
+        <Script src="/register-sw.js" strategy="afterInteractive" />
         {isProduction && <Analytics />}
       </body>
     </html>

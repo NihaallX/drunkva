@@ -7,9 +7,9 @@ export function middleware(req: NextRequest) {
   const isDev = process.env.NODE_ENV !== "production";
   const cspHeader = [
     "default-src 'self'",
-    // In dev: 'unsafe-inline' + 'unsafe-eval' for HMR
-    // In prod: 'unsafe-inline' only (Next.js inline scripts need it; unsafe-eval removed)
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com`,
+    // In dev: 'unsafe-inline' + 'unsafe-eval' for HMR.
+    // In prod: inline scripts are removed from the app shell, so script-src stays strict.
+    `script-src 'self'${isDev ? " 'unsafe-inline' 'unsafe-eval'" : ""} https://va.vercel-scripts.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "connect-src 'self' https://api.groq.com https://va.vercel-scripts.com",
