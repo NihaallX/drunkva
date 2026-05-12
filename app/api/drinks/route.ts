@@ -155,11 +155,15 @@ export async function POST(req: Request) {
       is_pr = currentPB === null || duration_seconds < currentPB;
 
       if (is_pr) {
-        if (drinkType === "beer") await sql`UPDATE users SET pb_beer_seconds = ${duration_seconds} WHERE id = ${user.id}`;
-        else if (drinkType === "shot") await sql`UPDATE users SET pb_shot_seconds = ${duration_seconds} WHERE id = ${user.id}`;
-        else if (drinkType === "wine") await sql`UPDATE users SET pb_wine_seconds = ${duration_seconds} WHERE id = ${user.id}`;
-        else if (drinkType === "cocktail") await sql`UPDATE users SET pb_cocktail_seconds = ${duration_seconds} WHERE id = ${user.id}`;
-        else if (drinkType === "spirit") await sql`UPDATE users SET pb_spirit_seconds = ${duration_seconds} WHERE id = ${user.id}`;
+        await sql`
+          UPDATE users SET
+            pb_beer_seconds = CASE WHEN ${drinkType} = 'beer' THEN ${duration_seconds} ELSE pb_beer_seconds END,
+            pb_shot_seconds = CASE WHEN ${drinkType} = 'shot' THEN ${duration_seconds} ELSE pb_shot_seconds END,
+            pb_wine_seconds = CASE WHEN ${drinkType} = 'wine' THEN ${duration_seconds} ELSE pb_wine_seconds END,
+            pb_cocktail_seconds = CASE WHEN ${drinkType} = 'cocktail' THEN ${duration_seconds} ELSE pb_cocktail_seconds END,
+            pb_spirit_seconds = CASE WHEN ${drinkType} = 'spirit' THEN ${duration_seconds} ELSE pb_spirit_seconds END
+          WHERE id = ${user.id}
+        `;
       }
     }
 
