@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,16 @@ export default function EditProfilePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const { data } = useSWR("/api/profile", fetcher);
+
+  useEffect(() => {
+    if (data?.user) {
+      if (data.user.real_name && !realName) setRealName(data.user.real_name);
+      if (data.user.alias && !alias) setAlias(data.user.alias);
+    }
+  }, [data, realName, alias]);
 
   const { signOut } = useClerk();
 

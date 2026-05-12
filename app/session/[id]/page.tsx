@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import useSWR from "swr";
 import { cn, formatLiveDuration } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import dynamic from "next/dynamic";
@@ -187,17 +188,15 @@ export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useUser();
   const router = useRouter();
-  const [data, setData] = useState<{
+  const [witnessResponded, setWitnessResponded] = useState(false);
+
+  const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const { data } = useSWR<{
     session: SessionDetail;
     drinks: DrinkRecord[];
     witnesses: WitnessRecord[];
     cheers_count: number;
-  } | null>(null);
-  const [witnessResponded, setWitnessResponded] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/sessions/${id}`).then((r) => r.json()).then(setData);
-  }, [id]);
+  }>(`/api/sessions/${id}`, fetcher);
 
   if (!data) {
     return (

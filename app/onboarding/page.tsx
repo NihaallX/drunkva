@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import { DrunkvaLogo } from "@/components/drunkva/DrunkvaLogo";
 import { Button } from "@/components/ui/button";
@@ -56,17 +57,15 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const { data } = useSWR("/api/profile", fetcher);
+
   useEffect(() => {
-    fetch("/api/profile")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.user) {
-          if (data.user.real_name && !realName) setRealName(data.user.real_name);
-          if (data.user.alias && !alias) setAlias(data.user.alias);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (data?.user) {
+      if (data.user.real_name && !realName) setRealName(data.user.real_name);
+      if (data.user.alias && !alias) setAlias(data.user.alias);
+    }
+  }, [data, realName, alias]);
 
   const handleSubmit = async () => {
     if (!realName.trim()) { setError("Name is required"); return; }

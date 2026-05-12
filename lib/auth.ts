@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { cache } from "react";
 import sql from "@/lib/db";
 import type { DbUser } from "@/lib/db";
 
@@ -11,7 +12,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
  *   injected into same-origin API fetch calls by AuthGuard.
  * - When true: uses Clerk auth() to resolve/create the user.
  */
-export async function getOrCreateUser(): Promise<DbUser | null> {
+export const getOrCreateUser = cache(async (): Promise<DbUser | null> => {
   if (!clerkEnabled) {
     const h = await headers();
     const simpleUserId = h.get("x-simple-user-id")?.trim() ?? "";
@@ -59,7 +60,7 @@ export async function getOrCreateUser(): Promise<DbUser | null> {
   `;
 
   return created as DbUser;
-}
+});
 
 export async function requireAuth(): Promise<DbUser> {
   const user = await getOrCreateUser();
