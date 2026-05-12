@@ -192,61 +192,50 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 });
     }
 
-    await sql`BEGIN`;
+    await sql.transaction(async (tx) => {
+      await tx`DELETE FROM drinks WHERE session_id = ${id}`;
+      await tx`DELETE FROM session_witnesses WHERE session_id = ${id}`;
+      await tx`DELETE FROM cheers WHERE session_id = ${id}`;
+      await tx`DELETE FROM sessions WHERE id = ${id} AND user_id = ${user.id}`;
 
-    try {
-      await sql`DELETE FROM drinks WHERE session_id = ${id}`;
-      await sql`DELETE FROM session_witnesses WHERE session_id = ${id}`;
-      await sql`DELETE FROM cheers WHERE session_id = ${id}`;
-      await sql`DELETE FROM sessions WHERE id = ${id} AND user_id = ${user.id}`;
-
-      await sql`
+      await tx`
         UPDATE users u SET pb_beer_seconds = (
           SELECT MIN(d.duration_seconds) FROM drinks d
           JOIN sessions s ON d.session_id = s.id
           WHERE s.user_id = u.id AND d.type = 'beer' AND d.duration_seconds IS NOT NULL
         ) WHERE id = ${user.id}
       `;
-      await sql`
+      await tx`
         UPDATE users u SET pb_shot_seconds = (
           SELECT MIN(d.duration_seconds) FROM drinks d
           JOIN sessions s ON d.session_id = s.id
           WHERE s.user_id = u.id AND d.type = 'shot' AND d.duration_seconds IS NOT NULL
         ) WHERE id = ${user.id}
       `;
-      await sql`
+      await tx`
         UPDATE users u SET pb_wine_seconds = (
           SELECT MIN(d.duration_seconds) FROM drinks d
           JOIN sessions s ON d.session_id = s.id
           WHERE s.user_id = u.id AND d.type = 'wine' AND d.duration_seconds IS NOT NULL
         ) WHERE id = ${user.id}
       `;
-      await sql`
+      await tx`
         UPDATE users u SET pb_cocktail_seconds = (
           SELECT MIN(d.duration_seconds) FROM drinks d
           JOIN sessions s ON d.session_id = s.id
           WHERE s.user_id = u.id AND d.type = 'cocktail' AND d.duration_seconds IS NOT NULL
         ) WHERE id = ${user.id}
       `;
-      await sql`
+      await tx`
         UPDATE users u SET pb_spirit_seconds = (
           SELECT MIN(d.duration_seconds) FROM drinks d
           JOIN sessions s ON d.session_id = s.id
           WHERE s.user_id = u.id AND d.type = 'spirit' AND d.duration_seconds IS NOT NULL
         ) WHERE id = ${user.id}
       `;
+    });
 
-      await sql`COMMIT`;
-      return NextResponse.json({ success: true });
-    } catch (err) {
-      try {
-        await sql`ROLLBACK`;
-      } catch {
-        // ignore rollback failures
-      }
-      console.error("Session delete transaction failed:", err);
-      return NextResponse.json({ error: "Failed to delete session" }, { status: 500 });
-    }
+    return NextResponse.json({ success: true });
   } catch (err) {
     if (err instanceof Response) return err;
     console.error("Session delete transaction failed:", err);

@@ -34,19 +34,54 @@ function buildQuery(strings: TemplateStringsArray, values: unknown[]) {
   return { text, params };
 }
 
-const sql = Object.assign(
-  async (strings: TemplateStringsArray, ...values: unknown[]) => {
+type SqlRunner = {
+  (strings: TemplateStringsArray, ...values: unknown[]): Promise<any[]>;
+  query: (text: string, params?: unknown[]) => Promise<any[]>;
+};
+
+type TransactionalSql = SqlRunner & {
+  transaction: <T>(callback: (tx: SqlRunner) => Promise<T>) => Promise<T>;
+};
+
+function createSqlRunner(queryFn: (text: string, params?: unknown[]) => Promise<{ rows: any[] }>): SqlRunner {
+  const runner = async (strings: TemplateStringsArray, ...values: unknown[]) => {
     const { text, params } = buildQuery(strings, values);
-    const result = await pool.query(text, params);
+    const result = await queryFn(text, params);
     return result.rows;
-  },
-  {
+  };
+
+  return Object.assign(runner, {
     query: async (text: string, params: unknown[] = []) => {
-      const result = await pool.query(text, params);
+      const result = await queryFn(text, params);
       return result.rows;
     },
+  });
+}
+
+async function transaction<T>(callback: (tx: SqlRunner) => Promise<T>) {
+  const client = await pool.connect();
+  const tx = createSqlRunner((text, params) => client.query(text, params));
+
+  try {
+    await client.query("BEGIN");
+    const result = await callback(tx);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Ignore rollback failures so the original error is preserved.
+    }
+    throw error;
+  } finally {
+    client.release();
   }
-);
+}
+
+const sql = Object.assign(createSqlRunner((text, params) => pool.query(text, params)), {
+  transaction,
+}) as TransactionalSql;
 
 export default sql;
 
