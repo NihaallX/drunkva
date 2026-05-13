@@ -17,30 +17,10 @@ import { calculateConfidence, getStageProgress } from "@/lib/confidence";
 import { useSessionTimer } from "@/hooks/useSessionTimer";
 import { formatLiveDuration } from "@/lib/utils";
 import { getPreferredFastestDrink } from "@/lib/drink-speed";
+import type { SessionState } from "@/lib/session-types";
 
 function getInitials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-}
-
-interface DrinkLog {
-  id?: string;
-  type: string;
-  logged_at: string;
-  duration_seconds?: number | null;
-  timing_method?: "gap" | "stopwatch";
-}
-
-interface SessionState {
-  id: string | null;
-  venueName: string;
-  startTime: string | null;
-  endTime: string | null;
-  drinks: DrinkLog[];
-  washroomCount: number;
-  burpCount: number;
-  chaknaLevel: "none" | "light" | "heavy";
-  fastestBeerSeconds: number | null;
-  fastestBeerIsPR: boolean;
 }
 
 interface LiveSessionScreenProps {
