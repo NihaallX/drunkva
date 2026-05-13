@@ -9,6 +9,7 @@ import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useUser } from "@/hooks/useUser";
 import { useToast } from "@/hooks/use-toast";
 import { logError } from "@/lib/logger";
+import type { SessionState } from "@/lib/session-types";
 
 interface ProfileData {
   user: { id: string; real_name: string; alias: string | null; avatar_url: string | null };
@@ -26,27 +27,6 @@ interface RecentSession {
   venue_name: string | null;
   peak_stage: string;
   duration_seconds: number | null;
-}
-
-interface DrinkLog {
-  id?: string;
-  type: string;
-  logged_at: string;
-  duration_seconds?: number | null;
-  timing_method?: "gap" | "stopwatch";
-}
-
-interface SessionState {
-  id: string | null;
-  venueName: string;
-  startTime: string | null;
-  endTime: string | null;
-  drinks: DrinkLog[];
-  washroomCount: number;
-  burpCount: number;
-  chaknaLevel: "none" | "light" | "heavy";
-  fastestBeerSeconds: number | null;
-  fastestBeerIsPR: boolean;
 }
 
 const EMPTY_SESSION: SessionState = {
